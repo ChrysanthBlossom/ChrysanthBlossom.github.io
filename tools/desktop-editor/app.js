@@ -648,7 +648,9 @@ async function uploadCurrent() {
     // 3) 标记已上传
     const idx = state.posts.findIndex(p => p.id === post.id);
     if (idx !== -1) {
-      state.posts[idx] = { ...state.posts[idx], file, uploadedAt: Date.now(), uploadedSha: sha || null };
+      const rec = { ...state.posts[idx], file, uploadedAt: Date.now(), uploadedSha: sha || null };
+      delete rec.removedAt;   // 重新上传后不再是「已从线上删除」
+      state.posts[idx] = rec;
       persistPosts();
     }
 
@@ -659,6 +661,73 @@ async function uploadCurrent() {
   } catch (err) {
     setBusy(false);
     toast(`上传失败：${err.message}`, 'err');
+  }
+}
+
+/** 从博客上删除当前文章（删掉 GitHub 仓库里的 source/_posts/<file>） */
+async function deleteRemote() {
+  if (state.busy) return;
+  if (needToken()) return;
+
+  const post = currentPost();
+  if (!post) return toast('没有选中的文章', 'err');
+
+  const file = post.file || (slugify(post.title) + '.md');
+  if (!file) return toast('这篇还没有文件名，无法定位线上文件', 'err');
+
+  const ok = confirm(
+    `确定要从博客上删除这篇文章吗？\n\n` +
+    `标题：${post.title || '(无标题)'}\n` +
+    `文件：source/_posts/${file}\n\n` +
+    `会直接从 GitHub 仓库删除该文件，Actions 重新构建后线上就访问不到了。\n` +
+    `此操作不可撤销（但本地草稿会保留）。`
+  );
+  if (!ok) return;
+
+  setBusy(true, '正在删除…');
+  try {
+    const { branch } = state.settings;
+
+    // 删除同样需要文件的 sha
+    let existing;
+    try {
+      existing = await ghFetch(
+        `${ghContentsUrl(file)}?ref=${encodeURIComponent(branch)}`,
+        { headers: ghHeaders(false) }
+      );
+    } catch (err) {
+      if (err.status === 404) {
+        setBusy(false);
+        return toast(`博客上找不到 source/_posts/${file}\n可能文件名不对，或这篇从未上传过。`, 'err');
+      }
+      throw err;
+    }
+
+    await ghFetch(ghContentsUrl(file), {
+      method: 'DELETE',
+      headers: ghHeaders(true),
+      body: JSON.stringify({
+        message: `删除文章：${post.title || file}`,
+        sha: existing.sha,
+        branch
+      })
+    });
+
+    const idx = state.posts.findIndex(p => p.id === post.id);
+    if (idx !== -1) {
+      delete state.posts[idx].uploadedAt;
+      delete state.posts[idx].uploadedSha;
+      state.posts[idx].removedAt = Date.now();
+      persistPosts();
+    }
+
+    setBusy(false);
+    updateUploadState();
+    renderPostList();
+    toast('已从博客删除。GitHub Actions 正在重新构建，约 30 秒后线上消失。', 'ok');
+  } catch (err) {
+    setBusy(false);
+    toast(`删除失败：${err.message}`, 'err');
   }
 }
 
@@ -720,8 +789,10 @@ async function pullFromGitHub() {
 
 function setBusy(v, label) {
   state.busy = v;
-  $('btn-upload').disabled = v;
-  $('btn-pull').disabled = v;
+  ['btn-upload', 'btn-pull', 'btn-delete-remote'].forEach(id => {
+    const el = $(id);
+    if (el) el.disabled = v;
+  });
   $('btn-upload').textContent = v ? (label || '处理中…') : '上传到博客';
 }
 
@@ -730,7 +801,10 @@ function updateUploadState() {
   const post = currentPost();
   if (!post) { badge.hidden = true; return; }
   badge.hidden = false;
-  if (post.uploadedAt) {
+  if (post.removedAt && !post.uploadedAt) {
+    badge.className = 'badge badge-warn';
+    badge.textContent = `已从线上删除 · ${fmtTime(post.removedAt)}`;
+  } else if (post.uploadedAt) {
     badge.className = 'badge badge-ok';
     badge.textContent = `已上传 · ${fmtTime(post.uploadedAt)}`;
   } else {
@@ -860,6 +934,7 @@ function bindEvents() {
 
   on('btn-new', 'click', newPost);
   on('btn-upload', 'click', uploadCurrent);
+  on('btn-delete-remote', 'click', deleteRemote);
   on('btn-pull', 'click', pullFromGitHub);
   on('btn-export', 'click', exportCurrent);
   on('btn-export-all', 'click', exportAll);

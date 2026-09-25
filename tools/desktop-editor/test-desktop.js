@@ -263,6 +263,62 @@ function main() {
     const dom2Preview = await waitFor(() => w$('preview').innerHTML.includes('兜底保存测试'), 4000);
     check('场景2：预览仍正常工作', dom2Preview);
 
+    // ---------- 场景 3：删除线上文章（拦截 GitHub API）----------
+    console.log('\n  --- 场景 3：从博客删除文章 ---');
+
+    const dom3 = new JSDOM(html, { url: 'http://localhost/y.html', runScripts: 'outside-only', pretendToBeVisual: true });
+    const w3 = dom3.window;
+    const calls = [];
+    w3.localStorage.setItem('blogwriter.settings.v1', JSON.stringify({
+      owner: 'ChrysanthBlossom', repo: 'ChrysanthBlossom.github.io', branch: 'main', token: 'github_pat_TESTTOKEN'
+    }));
+    w3.localStorage.setItem('blogwriter.posts.v1', JSON.stringify([{
+      id: 'p-del', title: '待删除的文章', date: '2026-09-25 20:00:00', file: 'to-delete.md',
+      tags: [], categories: [], description: '', body: '正文内容', extras: [], updatedAt: Date.now()
+    }]));
+
+    w3.fetch = async (url, opts = {}) => {
+      const method = (opts.method || 'GET').toUpperCase();
+      calls.push({ url: String(url), method, body: opts.body, headers: opts.headers || {} });
+      if (method === 'DELETE') return { ok: true, status: 200, json: async () => ({ commit: { sha: 'c0ffee' } }) };
+      if (String(url).includes('/contents/')) return { ok: true, status: 200, json: async () => ({ sha: 'FAKESHA123', name: 'to-delete.md' }) };
+      return { ok: true, status: 200, json: async () => ({ full_name: 'x/y' }) };
+    };
+    w3.confirm = () => true;
+
+    let e3 = null;
+    try {
+      w3.eval(conf);
+      w3.MathJax = { startup: { promise: Promise.resolve() }, typesetPromise: async () => {} };
+      w3.eval(markedSrc); w3.eval(prismSrc); w3.eval(prismLangs); w3.eval(appSrc);
+    } catch (err) { e3 = err; }
+    check('场景3：应用可启动', !e3, e3 && e3.message);
+
+    await sleep(700);
+    const w3$ = id => w3.document.getElementById(id);
+    check('场景3：载入了待删除的文章', w3$('f-file').value === 'to-delete.md', w3$('f-file').value);
+
+    calls.length = 0;
+    w3$('btn-delete-remote').click();
+    await sleep(800);
+
+    const del = calls.find(c => c.method === 'DELETE');
+    const get = calls.find(c => c.method === 'GET' && c.url.includes('/contents/'));
+    check('场景3：先 GET 取到了文件 sha', Boolean(get), JSON.stringify(calls.map(c => c.method + ' ' + c.url)));
+    check('场景3：发出了 DELETE 请求', Boolean(del));
+    if (del) {
+      check('场景3：删除的是正确的文件路径',
+        /\/contents\/source\/_posts\/to-delete\.md$/.test(del.url), del.url);
+      const body = JSON.parse(del.body || '{}');
+      check('场景3：请求体带了 sha / branch / 提交信息',
+        body.sha === 'FAKESHA123' && body.branch === 'main' && /删除文章/.test(body.message || ''),
+        JSON.stringify(body));
+      check('场景3：带了 Authorization 头',
+        String(del.headers.Authorization || '').startsWith('Bearer '), String(del.headers.Authorization));
+    }
+    check('场景3：状态栏显示已从线上删除',
+      /已从线上删除/.test(w3$('upload-state').textContent || ''), w3$('upload-state').textContent);
+
     const failed = results.filter(r => !r.ok).length;
     console.log(`\n  结果: ${results.length - failed} 通过 / ${failed} 失败`);
     process.exit(failed ? 1 : 0);

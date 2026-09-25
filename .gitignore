@@ -1,0 +1,12 @@
+.DS_Store
+Thumbs.db
+db.json
+*.log
+node_modules/
+public/
+.deploy*/
+_multiconfig.yml
+
+# npm 缓存/日志（本机默认缓存目录不可写，会改用仓库内的 .npm-cache）
+.npm-cache/
+.npm-logs/

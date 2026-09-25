@@ -1,0 +1,63 @@
+# 把 Hexo 源码构建后发布到 GitHub Pages
+#
+# 触发方式：推送到 main 分支，或在 Actions 页面手动触发
+# 首次使用还需在仓库 Settings -> Pages -> Source 中选择 "GitHub Actions"
+#
+# 仓库名必须是 ChrysanthBlossom.github.io 才能发布到根路径
+# https://ChrysanthBlossom.github.io/
+
+name: Deploy Hexo to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# 只允许一个部署同时进行；排队中的旧任务直接取消
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build site
+        run: npm run build
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

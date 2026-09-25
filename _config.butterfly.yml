@@ -1,0 +1,98 @@
+# ======================================================
+# Butterfly 主题配置（站点级覆盖）
+# 这里只写需要覆盖的项；完整默认值见：
+#   node_modules/hexo-theme-butterfly/_config.yml
+# 文档：https://butterfly.js.org/
+# ======================================================
+
+# ------------------------------------------------------
+# 导航栏
+# ------------------------------------------------------
+nav:
+  logo:
+  display_title: true
+  display_post_title: true
+  fixed: false
+
+# ------------------------------------------------------
+# 菜单（显示名: 链接 || 图标）
+# ------------------------------------------------------
+menu:
+  首页: / || fas fa-home
+  归档: /archives/ || fas fa-archive
+  分类: /categories/ || fas fa-folder-open
+  标签: /tags/ || fas fa-tags
+  关于: /about/ || fas fa-heart
+
+# ------------------------------------------------------
+# 社交链接（图标: 链接 || 描述 || 颜色）
+# ------------------------------------------------------
+social:
+  fab fa-github: https://github.com/ChrysanthBlossom || GitHub || '#24292e'
+
+# ------------------------------------------------------
+# 图标与头像（由 tools/gen_brand_assets.py 生成）
+# ------------------------------------------------------
+favicon: /img/favicon.png
+
+avatar:
+  img: /img/avatar.png
+  effect: false
+
+# ------------------------------------------------------
+# 主题配色（凤凰主题：琥珀橙）
+# 注：Butterfly 5.7 的默认 _config.yml 已不再列出 theme_color 段，
+#     但 source/css/var.styl 仍会读取，因此在此覆盖有效。
+# ------------------------------------------------------
+theme_color:
+  enable: true
+  main: '#F26B1D'
+  paginator: '#FFA630'
+  button_hover: '#FF8C42'
+  text_selection: '#FFA630'
+  link_color: '#F26B1D'
+  meta_color: '#858585'
+  hr_color: '#FFD8B0'
+  code_foreground: '#D9480F'
+  code_background: 'rgba(242, 107, 29, .08)'
+  toc_color: '#FFA630'
+  blockquote_padding_color: '#FFA630'
+  blockquote_background_color: '#FFA630'
+  scrollbar_color: '#FFA630'
+
+# ------------------------------------------------------
+# 顶部大图（留空则使用默认背景，之后可自行填入图片 URL）
+# ------------------------------------------------------
+disable_top_img: false
+default_top_img:
+index_img:
+archive_img:
+tag_img:
+
+# ------------------------------------------------------
+# 数学公式
+#
+# 公式由 hexo-filter-mathjax 在**构建期**直接渲染成内联 SVG，
+# 因此这里必须把主题的前端渲染器留空关掉。
+# （插件 README 明确要求：Disable front-end math renderer in Hexo theme settings）
+# 若开成 mathjax/katex，浏览器端会再渲染一次，出现重复公式。
+# 相关配置在站点 _config.yml 的 mathjax 段。
+# ------------------------------------------------------
+math:
+  use:
+  per_page: false
+  hide_scrollbar: false
+
+# ------------------------------------------------------
+# 搜索（配合 hexo-generator-searchdb，见站点 _config.yml）
+# ------------------------------------------------------
+search:
+  use: local_search
+  placeholder: 搜索
+  local_search:
+    preload: false
+    top_n_per_article: 1
+    unescape: false
+    pagination:
+      enable: false
+      hitsPerPage: 8

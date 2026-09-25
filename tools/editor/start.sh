@@ -31,5 +31,5 @@ else
   ( cd "$BLOG_DIR" && nohup npx hexo server -p "$HEXO_PORT" >/tmp/hexo-preview.log 2>&1 & )
 fi
 
-echo "写作台: http://127.0.0.1:$PORT/   （若打不开，试试 http://localhost:$PORT/）"
+echo "正在启动写作台（具体访问地址由 server.js 打印）…"
 exec node "$EDITOR_DIR/server.js"

@@ -13,6 +13,7 @@
 
 const http = require('http');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { execFile } = require('child_process');
 
@@ -486,37 +487,53 @@ const handler = async (req, res) => {
   }
 };
 
-// 同时监听 IPv4 与 IPv6 的回环地址。
+// 绑定地址。
 //
-// 只绑 127.0.0.1 是不够的：本机是 WSL2，Windows 侧的浏览器会把 localhost
-// 优先解析成 IPv6 的 ::1，于是连接被接受却收不到数据，
-// 浏览器报 "localhost 未发送任何数据"(ERR_EMPTY_RESPONSE)。
-// 两个回环地址都监听即可覆盖 localhost 与 127.0.0.1 两种写法。
-const HOSTS = ['127.0.0.1', '::1'];
+// 曾经只绑 127.0.0.1，结果 Windows 上的浏览器打不开，报
+// "未发送任何数据"(ERR_EMPTY_RESPONSE) —— 连接建立了却收不到响应。
+// 原因是 WSL2 的 localhost 转发对新绑定的端口并不可靠：
+// 同一台机器上 Hexo 预览（绑 *）一直能访问，DSH 界面（启动时就绑好）也能访问，
+// 唯独这个后启动的服务不行。
+//
+// 因此默认绑所有网卡，用 WSL 的 IP 直接访问，绕开 localhost 转发。
+// 可用 EDITOR_HOST 覆盖（例如只想本机可见就设 EDITOR_HOST=127.0.0.1）。
+const HOSTS = (process.env.EDITOR_HOST || '0.0.0.0,::').split(',').map(s => s.trim()).filter(Boolean);
 const listeners = [];
 
 function listenOn(host) {
   return new Promise(resolve => {
     const s = http.createServer(handler);
     s.on('error', err => {
-      log(`无法监听 ${host}:${PORT} -> ${err.code || err.message}`);
+      // 同一个端口在 IPv4/IPv6 上重复绑定时会报 EADDRINUSE，属正常，忽略
+      if (err.code !== 'EADDRINUSE') log(`无法监听 ${host}:${PORT} -> ${err.code || err.message}`);
       resolve(false);
     });
     s.listen(PORT, host, () => {
-      log(`监听 http://${host === '::1' ? '[::1]' : host}:${PORT}/`);
       listeners.push(s);
       resolve(true);
     });
   });
 }
 
+/** 列出可用于访问的地址，方便在浏览器里打开 */
+function reachableUrls() {
+  const urls = [`http://127.0.0.1:${PORT}/`];
+  for (const list of Object.values(os.networkInterfaces())) {
+    for (const net of list || []) {
+      if (net.family === 'IPv4' && !net.internal) urls.push(`http://${net.address}:${PORT}/`);
+    }
+  }
+  return urls;
+}
+
 (async function start() {
   const bound = await Promise.all(HOSTS.map(listenOn));
   if (!bound.some(Boolean)) {
-    log(`致命错误: 端口 ${PORT} 在两个回环地址上都无法监听`);
+    log(`致命错误: 端口 ${PORT} 在所有指定地址上都无法监听`);
     process.exit(1);
   }
-  log(`编辑器已启动: http://127.0.0.1:${PORT}/`);
+  log('编辑器已启动，可用以下地址访问：');
+  for (const u of reachableUrls()) log(`  ${u}`);
   log(`博客目录: ${BLOG_DIR}`);
   log(`Hexo 预览: ${HEXO_PREVIEW}`);
   const ghBin = findGhBinDir();

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>博客写作台 · 菲尼克斯奇幻乐园</title>
+<style>/*INLINE:CSS*/</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">博客写作台 <span>· 菲尼克斯奇幻乐园</span></div>
+  <div class="topbar-actions">
+    <span id="gh-state" class="badge">未配置 Token</span>
+    <span id="upload-state" class="badge" hidden>尚未上传</span>
+    <button id="btn-pull" class="btn btn-ghost" title="从博客把已有文章拉下来编辑">拉取</button>
+    <button id="btn-import" class="btn btn-ghost" title="从本地 .md 文件导入">导入</button>
+    <button id="btn-export" class="btn btn-ghost" title="把当前文章下载为 .md">导出</button>
+    <button id="btn-settings" class="btn btn-ghost">设置</button>
+    <button id="btn-upload" class="btn btn-primary">上传到博客</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <span>草稿（<span id="post-count">0</span>）</span>
+      <button id="btn-new" class="btn btn-small">+ 新建</button>
+    </div>
+    <ul id="post-list" class="post-list"></ul>
+    <div class="sidebar-foot">
+      <button id="btn-export-all" class="btn btn-small" title="把所有草稿导出成一个文件备份">导出全部草稿</button>
+    </div>
+  </aside>
+
+  <main class="editor">
+
+    <section class="meta">
+      <div class="meta-row">
+        <label class="field field-grow">
+          <span>标题</span>
+          <input id="f-title" type="text" placeholder="文章标题">
+        </label>
+        <label class="field" style="flex:0 0 200px">
+          <span>日期</span>
+          <input id="f-date" type="text" placeholder="2026-09-25 18:04:00">
+        </label>
+      </div>
+      <div class="meta-row">
+        <label class="field field-grow">
+          <span>文件名（上传后成为文章网址的一部分）</span>
+          <input id="f-file" type="text" placeholder="映射思考.md">
+        </label>
+        <label class="field field-grow">
+          <span>标签（逗号分隔）</span>
+          <input id="f-tags" type="text" placeholder="数学, 随笔">
+        </label>
+        <label class="field field-grow">
+          <span>分类（逗号分隔）</span>
+          <input id="f-categories" type="text" placeholder="学习">
+        </label>
+      </div>
+      <label class="field">
+        <span>描述（建议填写，用于页面摘要与搜索引擎）</span>
+        <input id="f-description" type="text" placeholder="一句话概括这篇文章">
+      </label>
+    </section>
+
+    <section class="split">
+      <div class="pane">
+        <div class="pane-head">
+          <span>Markdown</span>
+          <span id="word-count" class="muted"></span>
+        </div>
+        <textarea id="editor" spellcheck="false" placeholder="在这里写正文…&#10;&#10;支持 GitHub 风格 Markdown、代码块，以及 $行内公式$ 与 $$块级公式$$"></textarea>
+      </div>
+      <div class="pane">
+        <div class="pane-head">
+          <span>预览</span>
+          <span id="preview-status" class="muted"></span>
+        </div>
+        <div id="preview" class="preview markdown-body"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<footer class="statusbar">
+  <span id="save-state"></span>
+  <span id="dirty" class="dirty" hidden>● 正在保存…</span>
+  <span id="storage-warn" class="dirty" hidden>⚠️ 浏览器禁用了本地存储，内容可能无法保留，请用「导出」备份</span>
+</footer>
+
+<div id="toast" class="toast" hidden></div>
+<input id="file-input" type="file" accept=".md,.markdown,text/markdown" multiple hidden>
+
+<div id="modal-settings" class="modal-mask" hidden>
+  <div class="modal">
+    <h2>GitHub 设置</h2>
+    <p class="hint">
+      上传功能通过 GitHub API 提交文件，GitHub Actions 会自动构建并发布，无需命令行。
+      需要一个有仓库写权限的 Token（只存在这台电脑的浏览器里）。
+    </p>
+
+    <div class="field">
+      <span>GitHub 用户名</span>
+      <input id="s-owner" type="text" placeholder="ChrysanthBlossom">
+    </div>
+    <div class="field">
+      <span>仓库名</span>
+      <input id="s-repo" type="text" placeholder="ChrysanthBlossom.github.io">
+    </div>
+    <div class="field">
+      <span>分支</span>
+      <input id="s-branch" type="text" placeholder="main">
+    </div>
+    <div class="field">
+      <span>Personal Access Token</span>
+      <input id="s-token" type="password" placeholder="github_pat_... 或 ghp_...">
+    </div>
+
+    <p class="hint" style="margin-top:14px">
+      <strong>怎么创建 Token：</strong>
+    </p>
+    <ol>
+      <li>打开 <code>github.com/settings/personal-access-tokens/new</code>（细粒度 Token）</li>
+      <li>Repository access 选 <code>Only select repositories</code> → 只勾这个博客仓库</li>
+      <li>Permissions → Repository permissions → <code>Contents</code> 设为 <code>Read and write</code></li>
+      <li>Expiration 选一个较短的有效期，生成后复制过来</li>
+    </ol>
+    <p class="hint">
+      Token 保存在浏览器的 localStorage 中，仅本机可见。若担心安全，用完后去 GitHub 撤销即可。
+    </p>
+
+    <div class="modal-actions">
+      <button id="s-test" class="btn btn-ghost">测试连接</button>
+      <button id="s-cancel" class="btn">取消</button>
+      <button id="s-save" class="btn btn-primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- MathJax 配置必须在 bundle 之前。startup.typeset=false：改由预览刷新时手动排版 -->
+<script>
+window.MathJax = {
+  tex: {
+    inlineMath: [['$', '$'], ['\\(', '\\)']],
+    displayMath: [['$$', '$$'], ['\\[', '\\]']],
+    processEscapes: true
+  },
+  svg: { fontCache: 'global' },
+  options: { skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code'] },
+  startup: { typeset: false }
+};
+
+// 在 Prism 加载前就置位手动模式，避免它自己在 DOMContentLoaded 时自动高亮。
+// （只依赖 script 标签上的 data-manual 不够稳，因为那要看 document.currentScript）
+window.Prism = window.Prism || {};
+window.Prism.manual = true;
+</script>
+
+<!-- 以下均内联，保证离线可用 -->
+<script>/*INLINE:MARKED*/</script>
+<!-- data-manual：关掉 Prism 的自动高亮，改由应用在预览刷新时手动调用 -->
+<script data-manual>/*INLINE:PRISM_CORE*/</script>
+<script>/*INLINE:PRISM_LANGS*/</script>
+<script>/*INLINE:MATHJAX*/</script>
+<script>/*INLINE:APP*/</script>
+
+</body>
+</html>

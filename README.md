@@ -136,7 +136,11 @@ python3 tools/preview_ascii.py source/img/avatar.png 76   # 纯文本查看构�
 
 ## 部署到 GitHub Pages
 
-已配置 GitHub Actions，推送到 `main` 分支即自动构建发布：
+**已上线：<https://chrysanthblossom.github.io/>**
+
+仓库：<https://github.com/ChrysanthBlossom/ChrysanthBlossom.github.io>
+
+推送到 `main` 分支即自动构建发布：
 
 ```
 写完文章 → git push（只推 Markdown 源码）
@@ -146,13 +150,44 @@ python3 tools/preview_ascii.py source/img/avatar.png 76   # 纯文本查看构�
   自动发布上线
 ```
 
-**首次使用还差两步（在 GitHub 网页上操作）：**
+### 发布命令
 
-1. 建一个名为 `ChrysanthBlossom.github.io` 的仓库，把本目录推上去
-2. 仓库 **Settings → Pages → Source** 选择 **GitHub Actions**
+本机家目录只读，gh 和 git 的配置都在工作区内，所以推送必须带上一组环境变量。
+已封装成一键脚本：
 
-之后每次 `git push` 都会自动重新部署。工作流也支持在 Actions 页面手动触发
-（配置了 `workflow_dispatch`）。
+```bash
+/home/ume_1r0t0/ai_workplace/publish-blog.sh            # 提交并推送
+/home/ume_1r0t0/ai_workplace/publish-blog.sh "提交信息"  # 自定义提交信息
+/home/ume_1r0t0/ai_workplace/publish-blog.sh --preview  # 只本地预览
+```
+
+### 凭据说明
+
+`gh` CLI 装在 `/home/ume_1r0t0/ai_workplace/.tools/`（不在仓库内），
+登录 token 保存在 `.tools/gh-config/hosts.yml`，scope 为 `repo` + `workflow`。
+
+> `workflow` scope 是必需的：GitHub 不允许 OAuth 应用创建或修改
+> `.github/workflows/` 下的文件，除非显式持有该权限。
+
+### Pages 配置
+
+- `build_type` 必须是 **`workflow`**（不是 `legacy`），否则 `actions/deploy-pages` 会失败
+- 可用 API 切换，无需点网页：
+  ```bash
+  gh api -X PUT repos/ChrysanthBlossom/ChrysanthBlossom.github.io/pages -f build_type=workflow
+  ```
+
+### Actions 依赖版本
+
+当前使用（已实测部署通过）：
+
+| Action | 版本 |
+| --- | --- |
+| `actions/checkout` | v7 |
+| `actions/setup-node` | v7（`node-version: 24`，当前 Active LTS） |
+| `actions/configure-pages` | v6 |
+| `actions/upload-pages-artifact` | v5 |
+| `actions/deploy-pages` | v5 |
 
 ---
 

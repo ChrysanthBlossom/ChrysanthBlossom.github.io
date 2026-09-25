@@ -28,7 +28,6 @@ const NODE_MODULES = path.join(BLOG_DIR, 'node_modules');
 const TOOLS_DIR = process.env.BLOG_TOOLS_DIR || path.resolve(BLOG_DIR, '..', '.tools');
 
 const PORT = Number(process.env.EDITOR_PORT || 4001);
-const HOST = '127.0.0.1';
 const REPO = process.env.BLOG_REPO || 'ChrysanthBlossom/ChrysanthBlossom.github.io';
 const HEXO_PREVIEW = process.env.HEXO_PREVIEW || 'http://localhost:4000';
 
@@ -412,8 +411,16 @@ function serveFile(res, fullPath) {
 
 // ---------------------------------------------------------------- 路由
 
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+const handler = async (req, res) => {
+  // req.headers.host 是不可信输入，解析失败必须回一个响应。
+  // 如果让它抛到外面，连接会被接受却收不到任何数据，
+  // 浏览器只会报 ERR_EMPTY_RESPONSE（"未发送任何数据"），极难排查。
+  let url;
+  try {
+    url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+  } catch {
+    return sendText(res, 400, 'Bad Request');
+  }
   const p = url.pathname;
 
   try {
@@ -477,12 +484,41 @@ const server = http.createServer(async (req, res) => {
     log('error:', err.message);
     return sendJson(res, 500, { error: String(err.message || err) });
   }
-});
+};
 
-server.listen(PORT, HOST, () => {
-  log(`编辑器已启动: http://${HOST}:${PORT}/`);
+// 同时监听 IPv4 与 IPv6 的回环地址。
+//
+// 只绑 127.0.0.1 是不够的：本机是 WSL2，Windows 侧的浏览器会把 localhost
+// 优先解析成 IPv6 的 ::1，于是连接被接受却收不到数据，
+// 浏览器报 "localhost 未发送任何数据"(ERR_EMPTY_RESPONSE)。
+// 两个回环地址都监听即可覆盖 localhost 与 127.0.0.1 两种写法。
+const HOSTS = ['127.0.0.1', '::1'];
+const listeners = [];
+
+function listenOn(host) {
+  return new Promise(resolve => {
+    const s = http.createServer(handler);
+    s.on('error', err => {
+      log(`无法监听 ${host}:${PORT} -> ${err.code || err.message}`);
+      resolve(false);
+    });
+    s.listen(PORT, host, () => {
+      log(`监听 http://${host === '::1' ? '[::1]' : host}:${PORT}/`);
+      listeners.push(s);
+      resolve(true);
+    });
+  });
+}
+
+(async function start() {
+  const bound = await Promise.all(HOSTS.map(listenOn));
+  if (!bound.some(Boolean)) {
+    log(`致命错误: 端口 ${PORT} 在两个回环地址上都无法监听`);
+    process.exit(1);
+  }
+  log(`编辑器已启动: http://127.0.0.1:${PORT}/`);
   log(`博客目录: ${BLOG_DIR}`);
   log(`Hexo 预览: ${HEXO_PREVIEW}`);
   const ghBin = findGhBinDir();
   log(ghBin ? `gh 已找到: ${ghBin}` : '警告: 未找到 gh，发布后无法查询部署状态');
-});
+})();

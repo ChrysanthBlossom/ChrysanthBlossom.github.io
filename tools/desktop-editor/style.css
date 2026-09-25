@@ -19,6 +19,13 @@
 
 * { box-sizing: border-box; }
 
+/*
+ * 必须显式声明：hidden 属性依赖浏览器默认样式表里的 [hidden]{display:none}，
+ * 而作者样式表里任何 display 声明都会把它盖掉。
+ * 弹窗用的是 .modal-mask{display:flex}，曾经因此永远关不掉。
+ */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   height: 100%;

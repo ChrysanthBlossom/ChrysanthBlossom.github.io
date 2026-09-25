@@ -71,6 +71,30 @@ function main() {
   check(`app.js 引用的元素 ID 全部存在于模板中（共 ${appIds.length} 个）`,
     missingIds.length === 0, '缺失: ' + missingIds.join(', '));
 
+  // CSS 冲突检查：hidden 属性靠浏览器默认样式表的 [hidden]{display:none} 生效，
+  // 作者样式表里任何 display 声明都会盖掉它。
+  // 曾经 .modal-mask{display:flex} 导致设置弹窗永远关不掉 —— 这条就是防它回归。
+  const cssText = (html.match(/<style[^>]*>([\s\S]*?)<\/style>/) || [, ''])[1];
+  const hiddenTags = [...html.matchAll(/<[a-z]+[^>]*\shidden(\s|>)[^>]*>/gi)].map(m => m[0]);
+  const hiddenClasses = new Set();
+  for (const tag of hiddenTags) {
+    const cm = tag.match(/class="([^"]*)"/);
+    if (cm) cm[1].split(/\s+/).filter(Boolean).forEach(c => hiddenClasses.add(c));
+  }
+  const conflictClasses = [];
+  for (const cls of hiddenClasses) {
+    const re = new RegExp('\\.' + cls.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') + '\\s*\\{([^}]*)\\}', 'g');
+    for (const m of cssText.matchAll(re)) {
+      if (/(?:^|;)\s*display\s*:/.test(m[1])) conflictClasses.push(cls);
+    }
+  }
+  const hasHiddenFix = /\[hidden\][^{]*\{[^}]*display\s*:\s*none/.test(cssText);
+  check(`带 hidden 的元素未被 CSS 的 display 覆盖（检查了 ${hiddenClasses.size} 个 class）`,
+    conflictClasses.length === 0 || hasHiddenFix,
+    conflictClasses.length
+      ? `这些 class 设了 display 会导致 hidden 失效: ${conflictClasses.join(', ')}；需补 [hidden]{display:none}`
+      : '');
+
   // ---- 运行时检查
   const dom = new JSDOM(html, {
     url: 'http://localhost/blog-writer.html',   // 用 http 源以便 localStorage 可用
@@ -147,18 +171,34 @@ function main() {
 
     // 设置弹窗
     check('设置弹窗初始隐藏', $('modal-settings').hidden);
-    $('btn-settings').click();
-    check('点设置后弹窗打开', !$('modal-settings').hidden);
-    check('默认仓库已预填', $('s-owner').value === 'ChrysanthBlossom' && $('s-repo').value === 'ChrysanthBlossom.github.io',
-      `${$('s-owner').value} / ${$('s-repo').value}`);
-    $('s-cancel').click();
-    check('取消后弹窗关闭', $('modal-settings').hidden);
+    const hiddenStyle = window.getComputedStyle($('modal-settings'));
+    check('初始隐藏时计算样式也是 display:none', hiddenStyle.display === 'none',
+      `getComputedStyle().display = ${hiddenStyle.display}`);
 
-    // 没有 Token 时点上传应引导去设置
+    // 没有 Token 时点上传，应当引导去设置
     $('btn-upload').click();
     await sleep(300);
     check('未配置 Token 时上传会引导到设置', !$('modal-settings').hidden);
+    check('默认仓库已预填', $('s-owner').value === 'ChrysanthBlossom' && $('s-repo').value === 'ChrysanthBlossom.github.io',
+      `${$('s-owner').value} / ${$('s-repo').value}`);
+
+    // 关键：点「保存」必须真正关掉弹窗（不是只改 hidden 属性）
+    // 曾经 .modal-mask{display:flex} 盖掉了 [hidden]{display:none}，弹窗永远关不掉
+    $('s-token').value = 'github_pat_TESTSECRET';
+    $('s-save').click();
+    await sleep(400);
+
+    check('点保存后弹窗消失（属性）', $('modal-settings').hidden);
+    const savedStyle = window.getComputedStyle($('modal-settings'));
+    check('点保存后弹窗计算样式为 display:none（真正不可见）',
+      savedStyle.display === 'none', `getComputedStyle().display = ${savedStyle.display}`);
+    check('Token 已写入设置',
+      JSON.parse(window.localStorage.getItem('blogwriter.settings.v1') || '{}').token === 'github_pat_TESTSECRET');
+
+    $('btn-settings').click();
+    check('可再次打开', !$('modal-settings').hidden);
     $('s-cancel').click();
+    check('取消后弹窗关闭', $('modal-settings').hidden);
 
     // 公式保护（在打包产物里再验一次）
     $('editor').value = '公式 $a_{i,j} * b_{j,k}$ 与代码：\n\n```python\nx = "$HOME"\n```\n';

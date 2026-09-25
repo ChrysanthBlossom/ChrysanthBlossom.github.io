@@ -48,6 +48,28 @@ async function main() {
   check('编辑器服务可达', up, `无法连接 ${BASE}，请先运行 tools/editor/start.sh`);
   if (!up) return finish();
 
+  // CSS 与 hidden 的冲突检查：hidden 属性靠浏览器默认样式表的 [hidden]{display:none}
+  // 生效，作者样式表里任何 display 声明都会盖掉它。
+  // （本文件里 .btn 设了 display:inline-flex，曾让带 hidden 的按钮无法隐藏）
+  const cssText = fs.readFileSync(path.join(EDITOR, 'public', 'style.css'), 'utf8');
+  const htmlText = fs.readFileSync(path.join(EDITOR, 'public', 'index.html'), 'utf8');
+  const hiddenClasses = new Set();
+  for (const tag of htmlText.matchAll(/<[a-z]+[^>]*\shidden(\s|>)[^>]*>/gi)) {
+    const cm = tag[0].match(/class="([^"]*)"/);
+    if (cm) cm[1].split(/\s+/).filter(Boolean).forEach(c => hiddenClasses.add(c));
+  }
+  const conflicts = [];
+  for (const cls of hiddenClasses) {
+    const re = new RegExp('\\.' + cls.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&') + '\\s*\\{([^}]*)\\}', 'g');
+    for (const m of cssText.matchAll(re)) {
+      if (/(?:^|;)\s*display\s*:/.test(m[1])) conflicts.push(cls);
+    }
+  }
+  const hasFix = /\[hidden\][^{]*\{[^}]*display\s*:\s*none/.test(cssText);
+  check(`带 hidden 的元素未被 CSS 的 display 覆盖（${hiddenClasses.size} 个 class）`,
+    conflicts.length === 0 || hasFix,
+    conflicts.length ? `冲突 class: ${conflicts.join(', ')}；需补 [hidden]{display:none}` : '');
+
   // 备份第一篇，测完还原
   const list = await (await fetch(BASE + '/api/posts')).json();
   const target = list.posts[0];

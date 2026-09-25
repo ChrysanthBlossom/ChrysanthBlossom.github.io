@@ -41,7 +41,59 @@ npx hexo new page "页面名" # 新建页面
 
 ---
 
-## 写文章
+## 写作台（本地图形界面，推荐）
+
+不用敲命令，浏览器里写、看、发。
+
+```bash
+./tools/editor/start.sh
+```
+
+然后打开 **http://localhost:4001/**
+
+它会顺带把 Hexo 预览服务（端口 4000）也拉起来，所以「真实预览」按钮能直接看到主题渲染后的效果。
+
+### 功能
+
+| 功能 | 说明 |
+| --- | --- |
+| 文章列表 | 左侧列出全部文章，点击切换 |
+| 元信息表单 | 标题 / 日期 / 标签 / 分类 / 描述 / 文件名，不用手写 YAML |
+| 实时预览 | 左边写，右边即时渲染 |
+| 公式预览 | 支持 `$行内$` 和 `$$块级$$`，由 MathJax 渲染 |
+| 代码高亮 | 使用 Prism.js |
+| 一键保存 | `Ctrl+S` |
+| 一键发布 | 自动 `git add/commit/push`，并回显 GitHub Actions 部署状态 |
+| 真实预览 | 按钮跳到 Hexo 渲染后的页面（与线上完全一致） |
+
+### 实现要点
+
+- **零第三方依赖**：后端只用 Node 内置模块（`http` / `fs` / `path` / `child_process`）
+- **只监听 127.0.0.1**，不对局域网暴露；静态资源解析做了目录穿越防护
+- **复用博客自己的库**：预览用 `marked`（与 Hexo 构建时同一个库），
+  MathJax 用本地 `@mathjax/src` 的 bundle，不依赖 CDN
+- **公式保护**：`marked` 会把公式里的 `_` 和 `*` 当成强调语法渲染坏
+  （例如 `$a_{i,j} * b_{j,k}$`）。编辑器渲染前先把公式抽成占位符、
+  渲染后再放回，与博客构建时 `hexo-filter-mathjax` 的做法一致
+- **保留未知 front-matter 字段**：`sticky`、`cover` 等自定义字段在保存时原样写回，
+  不会被表单覆盖掉
+- 代码高亮没有用 `highlight.js`：它的 npm 包只发布 CommonJS
+  （`es/` 目录只是转发到 `lib/`），浏览器无法直接加载，因此改用 Prism.js
+
+### 测试
+
+```bash
+node tools/editor/test-math-protect.js   # 公式保护逻辑（9 个用例）
+node tools/editor/test-frontend.js       # 前端端到端（24 项，需先启动服务）
+```
+
+本机没有可用的浏览器（缺 `libnss3` / `libnspr4`，装 Chromium 需要改系统），
+所以前端测试用 **jsdom** 真实执行 DOM 代码。它能捕获运行时错误 ——
+开发过程中就是靠它发现「部署状态查询阻塞了文章载入」这个 bug 的。
+
+---
+
+## 写文章（命令行方式）
 
 ```bash
 npx hexo new post "映射思考"

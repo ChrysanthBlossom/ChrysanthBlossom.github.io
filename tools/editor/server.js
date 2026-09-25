@@ -81,6 +81,9 @@ function run(cmd, args, opts = {}) {
       (err, stdout, stderr) => {
         resolve({
           ok: !err,
+          code: err ? err.code : 0,
+          killed: Boolean(err && err.killed),
+          signal: (err && err.signal) || null,
           stdout: stdout || '',
           stderr: stderr || '',
           error: err ? String(err.message || err) : null
@@ -301,23 +304,42 @@ async function lastDeploy() {
   }
 }
 
+/** 把命令结果整理成可读的一行，空输出时也要给出原因 */
+function describe(res) {
+  const out = (res.stdout + res.stderr).trim();
+  if (out) return out.slice(0, 800);
+  if (res.killed) return `命令超时被终止（信号 ${res.signal || 'unknown'}），通常是网络不通或太慢`;
+  if (res.error) return res.error.slice(0, 400);
+  return '（命令无输出）';
+}
+
 async function publish(message) {
   const steps = [];
-  const push = (name, res) => steps.push({ name, ok: res.ok, out: (res.stdout + res.stderr).trim().slice(0, 800) });
+  const push = (name, res) => steps.push({ name, ok: res.ok, out: describe(res) });
 
   push('git add', await run('git', ['add', '-A']));
 
   const commit = await run('git', ['commit', '-m', message || '更新博客']);
   const nothingToCommit = /nothing to commit|无文件要提交|没有任何更改/i.test(commit.stdout + commit.stderr);
-  steps.push({ name: 'git commit', ok: commit.ok || nothingToCommit, out: (commit.stdout + commit.stderr).trim().slice(0, 800) });
+  steps.push({
+    name: 'git commit',
+    ok: commit.ok || nothingToCommit,
+    out: describe(commit)
+  });
 
   if (!commit.ok && !nothingToCommit) {
     return { ok: false, steps, fatal: '提交失败，已中止推送' };
   }
 
-  const pushRes = await run('git', ['push']);
+  // 推送给足时间，并让 git 在网络停滞时自己快速失败并给出可读报错，
+  // 而不是一直挂着等到被外层超时杀掉（那样 stderr 是空的，无法诊断）。
+  const pushRes = await run('git', [
+    '-c', 'http.lowSpeedLimit=1000',
+    '-c', 'http.lowSpeedTime=60',
+    'push'
+  ], { timeout: 300000 });
   push('git push', pushRes);
-  if (!pushRes.ok) return { ok: false, steps, fatal: '推送失败' };
+  if (!pushRes.ok) return { ok: false, steps, fatal: '推送失败（详见下方 git push 输出）' };
 
   return { ok: true, steps };
 }

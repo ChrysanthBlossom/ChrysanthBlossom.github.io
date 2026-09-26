@@ -64,11 +64,10 @@ theme_color:
 # 顶部大图（留空则使用默认背景，之后可自行填入图片 URL）
 # ------------------------------------------------------
 disable_top_img: false
-default_top_img:
-index_img:
+default_top_img: /img/banner.png    # 其他页面的背景
+index_img: /img/banner.png          # 首页的背景
 archive_img:
 tag_img:
-
 # ------------------------------------------------------
 # 数学公式
 #

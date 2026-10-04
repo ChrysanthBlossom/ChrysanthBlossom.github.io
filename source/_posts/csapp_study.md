@@ -4,7 +4,7 @@ date: 2026-09-26 11:10:47
 tags:
   - 技术
 categories:
-  - 技术
+  - 笔记
 description: CSAPP 学习笔记
 ---
 

@@ -660,7 +660,7 @@ async function uploadCurrent() {
     renderPostList();
   } catch (err) {
     setBusy(false);
-    toast(`上传失败：${err.message}`, 'err');
+    toast(`上传失败：${explainGhError(err)}`, 'err');
   }
 }
 
@@ -727,7 +727,7 @@ async function deleteRemote() {
     toast('已从博客删除。GitHub Actions 正在重新构建，约 30 秒后线上消失。', 'ok');
   } catch (err) {
     setBusy(false);
-    toast(`删除失败：${err.message}`, 'err');
+    toast(`删除失败：${explainGhError(err)}`, 'err');
   }
 }
 
@@ -783,7 +783,7 @@ async function pullFromGitHub() {
     updateUploadState();
   } catch (err) {
     setBusy(false);
-    toast(`拉取失败：${err.message}`, 'err');
+    toast(`拉取失败：${explainGhError(err)}`, 'err');
   }
 }
 
@@ -906,6 +906,10 @@ function explainGhError(err) {
     return 'Token 无效或已过期（GitHub 返回 Bad credentials）。请到 GitHub 重新生成一个，并确认复制完整。';
   }
   if (err.status === 403) {
+    // 这是细粒度 Token 最常见的一种失败：仓库能读、但 Contents 只给了 Read
+    if (/not accessible by personal access token/i.test(err.message || '')) {
+      return 'Token 能读不能写：请到 Token 设置里把 Contents 权限改成 Read and write（测试连接只需读权限，所以会显示连接成功）。';
+    }
     return '权限不足：这个 Token 的 Contents 权限需要设为 Read and write。';
   }
   if (err.status === 404) {
@@ -943,6 +947,14 @@ async function testConnection(silent) {
     const { owner, repo } = state.settings;
     const info = await ghFetch(`https://api.github.com/repos/${owner}/${repo}`,
       { headers: ghHeaders(false) });
+    if (info.permissions && info.permissions.push === false) {
+      // 仓库元信息能读到（只读就够），但推不进去 —— 提前告诉用户
+      badge.className = 'badge badge-warn';
+      badge.textContent = '已连接，但无写权限（Contents 需设为 Read and write）';
+      badge.title = '测试连接只需要读权限，所以能连上；上传会失败。请到 Token 设置里把 Contents 改成 Read and write。';
+      if (!silent) toast('Token 能读但不能写：请把 Contents 权限改成 Read and write', 'err');
+      return;
+    }
     badge.className = 'badge badge-ok';
     badge.textContent = `已连接 · ${info.full_name}`;
     badge.title = '';

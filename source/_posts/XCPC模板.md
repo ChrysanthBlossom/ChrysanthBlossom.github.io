@@ -939,7 +939,9 @@ signed main(){
 
 ### 主席树
 
-由于没有 build，因此 query 时有可能遇到空节点，需知悉。
+由于没有 `build`，因此 `query` 时有可能遇到空节点，需知悉。
+
+这里简单实现了区间第 k 大
 
 ```cpp
 #include<bits/stdc++.h>

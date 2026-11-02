@@ -900,6 +900,26 @@ async function saveSettings() {
   await testConnection(true);
 }
 
+/** 把 GitHub 的错误码翻译成人能看懂的说明 */
+function explainGhError(err) {
+  if (err.status === 401) {
+    return 'Token 无效或已过期（GitHub 返回 Bad credentials）。请到 GitHub 重新生成一个，并确认复制完整。';
+  }
+  if (err.status === 403) {
+    return '权限不足：这个 Token 的 Contents 权限需要设为 Read and write。';
+  }
+  if (err.status === 404) {
+    return '仓库不存在，或这个 Token 没有该仓库的访问权限。请检查仓库名和 Token 的仓库选择。';
+  }
+  if (err.status === 409) {
+    return '冲突：远端文件在这期间被改过，请先点「拉取」同步后重试。';
+  }
+  if (err.status === 422) {
+    return '提交被拒绝（通常是 sha 不匹配或文件过大），请先「拉取」同步后重试。';
+  }
+  return err.message;
+}
+
 async function testConnection(silent) {
   const badge = $('gh-state');
   if (!state.settings.token) {
@@ -907,6 +927,16 @@ async function testConnection(silent) {
     badge.textContent = '未配置 Token';
     return;
   }
+
+  // 先做格式粗检，省得白等一次网络请求
+  if (!/^(github_pat_|ghp_|gho_|ghu_|ghs_)/.test(state.settings.token)) {
+    badge.className = 'badge badge-err';
+    badge.textContent = 'Token 格式不对（应以 github_pat_ 或 ghp_ 开头）';
+    badge.title = '请在设置里确认 Token 是否复制完整';
+    if (!silent) toast('Token 格式看起来不对，请确认复制完整（以 github_pat_ 或 ghp_ 开头）', 'err');
+    return;
+  }
+
   badge.className = 'badge badge-busy';
   badge.textContent = '检查中…';
   try {
@@ -915,10 +945,13 @@ async function testConnection(silent) {
       { headers: ghHeaders(false) });
     badge.className = 'badge badge-ok';
     badge.textContent = `已连接 · ${info.full_name}`;
+    badge.title = '';
   } catch (err) {
+    const detail = explainGhError(err);
     badge.className = 'badge badge-err';
-    badge.textContent = `连接失败：${err.status === 401 ? 'Token 无效' : err.message}`;
-    if (!silent) toast(`GitHub 连接失败：${err.message}`, 'err');
+    badge.textContent = detail.length > 40 ? '连接失败：' + detail.slice(0, 34) + '…' : detail;
+    badge.title = detail;
+    if (!silent) toast(detail, 'err');
   }
 }
 
@@ -947,6 +980,15 @@ function bindEvents() {
 
   on('s-save', 'click', saveSettings);
   on('s-cancel', 'click', closeSettings);
+
+  // 显示/隐藏 Token，方便核对是不是复制完整
+  on('s-token-toggle', 'click', ev => {
+    ev.preventDefault();
+    const inp = $('s-token');
+    const showing = inp.type === 'text';
+    inp.type = showing ? 'password' : 'text';
+    ev.target.textContent = showing ? '显示' : '隐藏';
+  });
   on('s-test', 'click', async () => {
     state.settings = {
       owner: $('s-owner').value.trim(),

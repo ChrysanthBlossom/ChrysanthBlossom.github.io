@@ -159,7 +159,7 @@ bool in_convex(vector<Point>&convex,Point p){
 	if(((p-convex[ans])^(convex[ans+1]-p))<=0)return 1;
 	return 0;
 }
-
+```
 带小数版（主要利用里面关于圆、求交点等与凸性无关的板子）
 
 ```cpp

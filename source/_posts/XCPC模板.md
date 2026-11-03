@@ -742,6 +742,86 @@ namespace CostFlow{
 }
 ```
 
+### 3.欧拉回路
+
+有向图欧拉路径（字典序最小）
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=5e5+7;
+const ll inf=1e15;
+int n,m;
+bool del[maxn];
+vector<pair<int,int> >ed[maxn];
+vector<int>ans;
+void dfs(int u){
+	while(ed[u].size()){
+		if(del[ed[u].back().second]){
+			ed[u].pop_back();
+			continue;
+		}
+		auto [v,id]=ed[u].back();ed[u].pop_back();
+		del[id]=1;
+		dfs(v);
+	}
+	ans.emplace_back(u);
+}
+int in[maxn];
+signed main(){
+	ios::sync_with_stdio(0);
+	cin>>n>>m;
+	for(int i=1;i<=m;i++){
+		int u,v;cin>>u>>v;
+		ed[u].emplace_back(mkp(v,i));
+	}
+	for(int i=1;i<=n;i++){
+		for(auto [v,id]:ed[i])in[v]++;
+	}
+	int s=-1,t=-1;
+	for(int i=1;i<=n;i++){
+		if(abs(in[i]-(int)ed[i].size())>1){
+			cout<<"No\n";
+			return 0;
+		}
+		else if(in[i]==ed[i].size()-1){
+			if(s==-1)s=i;
+			else {
+				cout<<"No\n";
+				return 0;
+			}
+		}
+		else if(in[i]==ed[i].size()+1){
+			if(t==-1)t=i;
+			else {
+				cout<<"No\n";
+				return 0;
+			}
+		}
+	}
+	if(s==-1&&t==-1)s=t=1;
+	if(s==-1||t==-1){
+		cout<<"No\n";
+		return 0;
+	}
+	for(int i=1;i<=n;i++){
+		sort(ed[i].begin(),ed[i].end());
+		reverse(ed[i].begin(),ed[i].end());
+	}
+	dfs(s);
+	reverse(ans.begin(),ans.end());
+	for(auto x:ans)cout<<x<<' ';cout<<endl;
+	return 0;
+}
+```
+
+
+
 ## 三、DS
 
 ### 1.莫队

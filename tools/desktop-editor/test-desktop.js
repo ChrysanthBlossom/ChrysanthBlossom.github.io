@@ -319,6 +319,62 @@ function main() {
     check('场景3：状态栏显示已从线上删除',
       /已从线上删除/.test(w3$('upload-state').textContent || ''), w3$('upload-state').textContent);
 
+    // ---------- 场景 4：sha 冲突自动重试 ----------
+    console.log('\n  --- 场景 4：提交时 sha 冲突（浏览器缓存/并发修改）---');
+
+    const dom4 = new JSDOM(html, { url: 'http://localhost/z.html', runScripts: 'outside-only', pretendToBeVisual: true });
+    const w4 = dom4.window;
+    w4.localStorage.setItem('blogwriter.settings.v1', JSON.stringify({
+      owner: 'ChrysanthBlossom', repo: 'ChrysanthBlossom.github.io', branch: 'main', token: 'github_pat_T'
+    }));
+    w4.localStorage.setItem('blogwriter.posts.v1', JSON.stringify([{
+      id: 'p4', title: '冲突测试', date: '2026-11-02 20:00:00', file: 'conflict.md',
+      tags: [], categories: [], description: '', body: '正文', extras: [], updatedAt: Date.now()
+    }]));
+
+    const calls4 = [];
+    let getCount = 0;
+    let putCount = 0;
+    const okRes = data => ({ ok: true, status: 200, json: async () => data });
+    const errRes = (status, message) => ({ ok: false, status, json: async () => ({ message }) });
+
+    w4.fetch = async (url, opts = {}) => {
+      const method = (opts.method || 'GET').toUpperCase();
+      calls4.push({ method, body: opts.body });
+      if (method === 'PUT') {
+        putCount++;
+        // 第一次故意返回 sha 不匹配，模拟拿到旧的 sha
+        if (putCount === 1) return errRes(422, 'source/_posts/conflict.md does not match OLD_SHA');
+        return okRes({ commit: { sha: 'new' } });
+      }
+      if (String(url).includes('/contents/')) return okRes({ sha: 'SHA' + (++getCount) });
+      return okRes({ full_name: 'x/y' });
+    };
+    w4.confirm = () => true;
+
+    let e4 = null;
+    try {
+      w4.eval(conf);
+      w4.MathJax = { startup: { promise: Promise.resolve() }, typesetPromise: async () => {} };
+      w4.eval(markedSrc); w4.eval(prismSrc); w4.eval(prismLangs); w4.eval(appSrc);
+    } catch (err) { e4 = err; }
+    check('场景4：应用可启动', !e4, e4 && e4.message);
+
+    await sleep(700);
+    w4.document.getElementById('btn-upload').click();
+    await waitFor(() => putCount >= 2, 6000);
+    await sleep(300);
+
+    check('场景4：首次 PUT 冲突后自动重试', putCount === 2, `PUT 次数 = ${putCount}`);
+    const puts = calls4.filter(c => c.method === 'PUT');
+    if (puts.length >= 2) {
+      const sha2 = JSON.parse(puts[1].body || '{}').sha;
+      check('场景4：重试时用了重新获取的 sha', sha2 === 'SHA2', `第二次 sha = ${sha2}`);
+    }
+    check('场景4：最终上传成功（状态栏已上传）',
+      /已上传/.test(w4.document.getElementById('upload-state').textContent || ''),
+      w4.document.getElementById('upload-state').textContent);
+
     const failed = results.filter(r => !r.ok).length;
     console.log(`\n  结果: ${results.length - failed} 通过 / ${failed} 失败`);
     process.exit(failed ? 1 : 0);

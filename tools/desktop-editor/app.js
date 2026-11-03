@@ -583,7 +583,12 @@ function fromBase64(b64) {
 }
 
 async function ghFetch(url, options) {
-  const res = await fetch(url, options);
+  // cache: 'no-store' 是必须的。
+  // GitHub API 的 GET 响应带 `cache-control: private, max-age=60`，
+  // 浏览器会缓存 60 秒。若在 60 秒内第二次上传同一个文件，
+  // 拿到的还是上一次的 sha，PUT 时就会报
+  // "… does not match <sha>" 而失败。
+  const res = await fetch(url, { cache: 'no-store', ...(options || {}) });
   let data = null;
   try { data = await res.json(); } catch { /* 可能没有 body */ }
   if (!res.ok) {
@@ -594,6 +599,53 @@ async function ghFetch(url, options) {
     throw err;
   }
   return data;
+}
+
+/** 判断是否属于「sha 不匹配」这类可重试的冲突 */
+function isShaConflict(err) {
+  if (!err) return false;
+  if (err.status === 409) return true;
+  if (err.status === 422) return true;
+  return /does not match/i.test(err.message || '');
+}
+
+/**
+ * 提交文件内容；遇到 sha 冲突自动重取 sha 重试一次。
+ * 用于兜住并发修改（例如同一个文件在别处也被改过）。
+ */
+async function putContent(file, content, title, attempt = 0) {
+  const branch = state.settings.branch;
+  let sha = null;
+  try {
+    const existing = await ghFetch(
+      `${ghContentsUrl(file)}?ref=${encodeURIComponent(branch)}`,
+      { headers: ghHeaders(false) }
+    );
+    sha = existing.sha;
+  } catch (err) {
+    if (err.status !== 404) throw err;
+  }
+
+  const existed = sha !== null;
+  const message = `${existed ? '更新' : '新增'}文章：${title}`;
+  const body = { message, content: toBase64(content), branch };
+  if (sha) body.sha = sha;
+
+  try {
+    const data = await ghFetch(ghContentsUrl(file), {
+      method: 'PUT',
+      headers: ghHeaders(true),
+      body: JSON.stringify(body)
+    });
+    return { data, existed };
+  } catch (err) {
+    if (isShaConflict(err) && attempt < 2) {
+      console.warn('sha 冲突，重取后重试', attempt + 1);
+      await new Promise(r => setTimeout(r, 300 * (attempt + 1)));
+      return putContent(file, content, title, attempt + 1);
+    }
+    throw err;
+  }
 }
 
 function needToken() {
@@ -621,40 +673,20 @@ async function uploadCurrent() {
 
   setBusy(true, '正在上传…');
   try {
-    // 1) 取已有文件的 sha（更新时必须提供；新文件没有）
-    let sha = null;
-    try {
-      const existing = await ghFetch(`${ghContentsUrl(file)}?ref=${encodeURIComponent(state.settings.branch)}`,
-        { headers: ghHeaders(false) });
-      sha = existing.sha;
-    } catch (err) {
-      if (err.status !== 404) throw err;
-    }
+    // 取 sha + 提交（内部会处理 sha 冲突并自动重试）
+    const putResult = await putContent(file, content, post.title);
 
-    // 2) 提交
-    const body = {
-      message: `${sha ? '更新' : '新增'}文章：${post.title}`,
-      content: toBase64(content),
-      branch: state.settings.branch
-    };
-    if (sha) body.sha = sha;
-
-    await ghFetch(ghContentsUrl(file), {
-      method: 'PUT',
-      headers: ghHeaders(true),
-      body: JSON.stringify(body)
-    });
-
-    // 3) 标记已上传
+    // 标记已上传
     const idx = state.posts.findIndex(p => p.id === post.id);
     if (idx !== -1) {
-      const rec = { ...state.posts[idx], file, uploadedAt: Date.now(), uploadedSha: sha || null };
+      const newSha = (putResult && putResult.data && putResult.data.content && putResult.data.content.sha) || null;
+      const rec = { ...state.posts[idx], file, uploadedAt: Date.now(), uploadedSha: newSha };
       delete rec.removedAt;   // 重新上传后不再是「已从线上删除」
       state.posts[idx] = rec;
       persistPosts();
     }
 
-    toast(`已${sha ? '更新' : '提交'} source/_posts/${file}\nGitHub Actions 正在构建，约 30 秒后上线`, 'ok');
+    toast(`已${putResult.existed ? '更新' : '提交'} source/_posts/${file}\nGitHub Actions 正在构建，约 30 秒后上线`, 'ok');
     setBusy(false);
     updateUploadState();
     renderPostList();

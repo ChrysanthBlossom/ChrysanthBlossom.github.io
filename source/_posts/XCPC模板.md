@@ -1010,3 +1010,247 @@ signed main(){
 
 */
 ```
+
+### 吉司机线段树
+
+采用最假女选手处的板子
+
+注意 `max` 和 `min` 同时压时要考虑数字种类数为 1 与 2 时情况。
+
+以及 `push_down` 要注意不要用自己的 `maxi` 和 `mini` 算哪个孩子该传标记，毕竟自己已经改过了。
+
+以及 `add_tag` 注意顺序！！！！！！
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=5e5+7;
+const ll inf=1e15;
+int n,m;
+int a[maxn];
+namespace SegT{
+	struct node{
+		int l,r;
+		ll maxi,mini;
+		ll sema,semi;
+		ll sum;
+		ll lami,lama,laal;
+		int cntma,cntmi;
+	}tree[maxn<<2];
+	#define ls(o) (o<<1)
+	#define rs(o) (o<<1|1)
+	void push_up(int o){
+		tree[o].sum=tree[ls(o)].sum+tree[rs(o)].sum;
+		if(tree[ls(o)].maxi>tree[rs(o)].maxi){
+			tree[o].maxi=tree[ls(o)].maxi;
+			tree[o].sema=max(tree[ls(o)].sema,tree[rs(o)].maxi);
+			tree[o].cntma=tree[ls(o)].cntma;
+		}
+		else if(tree[ls(o)].maxi<tree[rs(o)].maxi){
+			tree[o].maxi=tree[rs(o)].maxi;
+			tree[o].sema=max(tree[ls(o)].maxi,tree[rs(o)].sema);
+			tree[o].cntma=tree[rs(o)].cntma;
+		}
+		else{
+			tree[o].maxi=tree[ls(o)].maxi;
+			tree[o].sema=max(tree[ls(o)].sema,tree[rs(o)].sema);
+			tree[o].cntma=tree[ls(o)].cntma+tree[rs(o)].cntma;
+		}
+
+
+		if(tree[ls(o)].mini<tree[rs(o)].mini){
+			tree[o].mini=tree[ls(o)].mini;
+			tree[o].semi=min(tree[ls(o)].semi,tree[rs(o)].mini);
+			tree[o].cntmi=tree[ls(o)].cntmi;
+		}
+		else if(tree[ls(o)].mini>tree[rs(o)].mini){
+			tree[o].mini=tree[rs(o)].mini;
+			tree[o].semi=min(tree[ls(o)].mini,tree[rs(o)].semi);
+			tree[o].cntmi=tree[rs(o)].cntmi;
+		}
+		else{
+			tree[o].mini=tree[ls(o)].mini;
+			tree[o].semi=min(tree[ls(o)].semi,tree[rs(o)].semi);
+			tree[o].cntmi=tree[ls(o)].cntmi+tree[rs(o)].cntmi;
+		}
+	}
+	void add_tag(int o,ll lami,ll lama,ll laal){
+		tree[o].lami+=lami;
+		tree[o].lama+=lama;
+		tree[o].laal+=laal;
+
+		tree[o].maxi+=laal;
+		tree[o].mini+=laal;
+		tree[o].sema+=laal;
+		tree[o].semi+=laal;
+		tree[o].sum+=laal*(tree[o].r-tree[o].l+1);
+		if(tree[o].maxi==tree[o].mini){
+			tree[o].maxi+=lami+lama;
+			tree[o].mini+=lami+lama;
+			tree[o].sum+=(tree[o].r-tree[o].l+1)*(lami+lama);
+			tree[o].sema=-inf;
+			tree[o].semi=inf;
+			return;
+		}
+		if(tree[o].maxi==tree[o].semi)tree[o].semi+=lama;
+		if(tree[o].mini==tree[o].sema)tree[o].sema+=lami;
+		tree[o].maxi+=lama;
+		tree[o].mini+=lami;
+		tree[o].sum+=tree[o].cntma*lama;
+		tree[o].sum+=tree[o].cntmi*lami;
+	}
+	void push_down(int o){
+		ll mini=min(tree[ls(o)].mini,tree[rs(o)].mini),maxi=max(tree[ls(o)].maxi,tree[rs(o)].maxi);
+		add_tag(ls(o),tree[o].lami*(mini==tree[ls(o)].mini),tree[o].lama*(maxi==tree[ls(o)].maxi),tree[o].laal);
+		add_tag(rs(o),tree[o].lami*(mini==tree[rs(o)].mini),tree[o].lama*(maxi==tree[rs(o)].maxi),tree[o].laal);
+		tree[o].lami=tree[o].lama=tree[o].laal=0;
+	}
+	void build(int o,int l,int r){
+		tree[o].l=l,tree[o].r=r;
+		tree[o].sum=tree[o].lami=tree[o].lama=tree[o].laal=0;
+		tree[o].cntma=tree[o].cntmi=0;
+		if(l==r){
+			tree[o].maxi=tree[o].mini=a[l];tree[o].sum=a[l];
+			tree[o].sema=-inf;tree[o].semi=inf;
+			tree[o].cntma=tree[o].cntmi=1;
+			return;
+		}
+		int mid=l+r>>1;
+		build(ls(o),l,mid);build(rs(o),mid+1,r);
+		push_up(o);
+	}
+	void update1(int o,int l,int r,int k){
+		if(l<=tree[o].l&&tree[o].r<=r){
+			add_tag(o,0,0,k);
+			return;
+		}
+		push_down(o);
+		int mid=tree[o].l+tree[o].r>>1;
+		if(l<=mid)update1(ls(o),l,r,k);
+		if(r>mid)update1(rs(o),l,r,k);
+		push_up(o);
+	}
+	void update2(int o,int l,int r,int k){
+		// cout<<o<<' '<<l<<' '<<r<<' '<<k<<endl;
+		if(tree[o].mini>=k)return;
+		if(l<=tree[o].l&&tree[o].r<=r){
+			if(tree[o].semi>k){
+				add_tag(o,k-tree[o].mini,0,0);
+				return;
+			}
+		}
+		push_down(o);
+		int mid=tree[o].l+tree[o].r>>1;
+		if(l<=mid)update2(ls(o),l,r,k);
+		if(r>mid)update2(rs(o),l,r,k);
+		push_up(o);
+	}
+	void update3(int o,int l,int r,int k){
+		if(tree[o].maxi<=k)return;
+		if(l<=tree[o].l&&tree[o].r<=r){
+			if(tree[o].sema<k){
+				add_tag(o,0,k-tree[o].maxi,0);
+				return;
+			}
+		}
+		push_down(o);
+		int mid=tree[o].l+tree[o].r>>1;
+		if(l<=mid)update3(ls(o),l,r,k);
+		if(r>mid)update3(rs(o),l,r,k);
+		push_up(o);
+	}
+	ll query1(int o,int l,int r){
+		if(l<=tree[o].l&&tree[o].r<=r)return tree[o].sum;
+		push_down(o);
+		int mid=tree[o].l+tree[o].r>>1;
+		ll ans=0;
+		if(l<=mid)ans+=query1(ls(o),l,r);
+		if(r>mid)ans+=query1(rs(o),l,r);
+		return ans;
+	}
+	ll query2(int o,int l,int r){
+		if(l<=tree[o].l&&tree[o].r<=r)return tree[o].maxi;
+		push_down(o);
+		int mid=tree[o].l+tree[o].r>>1;
+		ll ans=-inf;
+		if(l<=mid)ans=max(ans,query2(ls(o),l,r));
+		if(r>mid)ans=max(ans,query2(rs(o),l,r));
+		return ans;
+	}
+	ll query3(int o,int l,int r){
+		if(l<=tree[o].l&&tree[o].r<=r)return tree[o].mini;
+		push_down(o);
+		int mid=tree[o].l+tree[o].r>>1;
+		ll ans=inf;
+		if(l<=mid)ans=min(ans,query3(ls(o),l,r));
+		if(r>mid)ans=min(ans,query3(rs(o),l,r));
+		return ans;
+	}
+}
+signed main(){
+	ios::sync_with_stdio(0);
+	cin>>n;
+	for(int i=1;i<=n;i++)cin>>a[i];
+	SegT::build(1,1,n);
+	cin>>m;
+	for(int i=1;i<=m;i++){
+		int op;cin>>op;
+		int l,r,k;cin>>l>>r;
+		if(op<=3){
+			cin>>k;
+		}
+		if(op==1)SegT::update1(1,l,r,k);
+		if(op==2)SegT::update2(1,l,r,k);
+		if(op==3)SegT::update3(1,l,r,k);
+		if(op==4)cout<<SegT::query1(1,l,r)<<endl;
+		if(op==5)cout<<SegT::query2(1,l,r)<<endl;
+		if(op==6)cout<<SegT::query3(1,l,r)<<endl;
+	}
+	return 0;
+}
+/*
+10
+17 18 13 19 1 17 11 10 13 17 
+30
+5 6 7
+3 1 3 10
+2 4 10 20
+4 2 8
+6 6 9
+2 5 5 16
+3 4 10 4
+5 8 9
+1 6 8 7
+6 3 6
+2 4 9 12
+1 1 5 14
+6 6 10
+3 1 9 3
+4 7 8
+2 7 8 19
+4 1 5
+2 5 7 10
+3 5 8 12
+1 5 8 6
+6 8 10
+1 3 10 17
+1 5 9 16
+3 4 7 16
+5 8 9
+3 6 7 13
+1 10 10 12
+3 5 7 4
+2 1 3 13
+2 4 6 16
+
+
+
+
+
+*/
+```

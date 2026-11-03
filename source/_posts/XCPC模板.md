@@ -820,7 +820,48 @@ signed main(){
 }
 ```
 
+无向图欧拉回路
 
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=5e5+7;
+const ll inf=1e15;
+int n,m;
+bool del[maxn];
+vector<pair<int,int> >ed[maxn];
+vector<int>ans;
+void dfs(int u){
+	while(ed[u].size()){
+		if(del[ed[u].back().second]){
+			ed[u].pop_back();
+			continue;
+		}
+		auto [v,id]=ed[u].back();ed[u].pop_back();
+		del[id]=1;
+		dfs(v);
+	}
+	ans.emplace_back(u);
+}
+signed main(){
+	ios::sync_with_stdio(0);
+	cin>>n>>m;
+	for(int i=1;i<=m;i++){
+		int u,v;cin>>u>>v;
+		ed[u].emplace_back(mkp(v,i));
+		ed[v].emplace_back(mkp(u,i));
+	}
+	dfs(1);
+	reverse(ans.begin(),ans.end());
+	for(auto x:ans)cout<<x<<'\n';
+	return 0;
+}
+```
 
 ## 三、DS
 

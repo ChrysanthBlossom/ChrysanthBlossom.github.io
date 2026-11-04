@@ -469,7 +469,7 @@ void update(set<Point>&st,Point p){
 
 ## 二、图论
 
-### 1. inf 种 tarjan
+### inf 种 tarjan
 
 求点双
 
@@ -562,7 +562,7 @@ void tarjan(int u){
 }
 ```
 
-### 2.网络流
+### 网络流
 
 最大流
 
@@ -742,7 +742,7 @@ namespace CostFlow{
 }
 ```
 
-### 3.欧拉回路
+### 欧拉回路
 
 有向图欧拉路径（字典序最小）
 
@@ -863,7 +863,7 @@ signed main(){
 }
 ```
 
-### 4.差分约束
+### 差分约束
 
 注意要建虚点。
 
@@ -919,7 +919,7 @@ signed main(){
 
 ### 虚树
 
-谨慎清空
+谨慎清空，外面与 `Graph` 的 `namespace` 里面都要。
 
 ```cpp
 #include<bits/stdc++.h>
@@ -1034,7 +1034,7 @@ signed main(){
 
 ## 三、DS
 
-### 1.莫队
+### 莫队
 
 普通莫队
 

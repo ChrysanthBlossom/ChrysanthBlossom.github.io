@@ -917,6 +917,121 @@ signed main(){
 }
 ```
 
+### 虚树
+
+谨慎清空
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=5e5+7;
+const ll inf=1e15;
+int n,m;
+vector<pair<int,int> >ed[maxn];
+int dep[maxn];
+int mini[maxn][26];
+int f[maxn][26];
+int dfn[maxn],tot;
+void dfs(int u,int fa){
+	dfn[u]=++tot;
+	dep[u]=dep[fa]+1;
+	for(auto [v,w]:ed[u]){
+		if(v==fa)continue;
+		f[v][0]=u;
+		for(int i=1;i<=20;i++)f[v][i]=f[f[v][i-1]][i-1];
+		mini[v][0]=w;
+		for(int i=1;i<=20;i++)mini[v][i]=min(mini[v][i-1],mini[f[v][i-1]][i-1]);
+		dfs(v,u);
+	}
+}
+int get_weight(int u,int anc){
+	int ans=1e9;
+	for(int i=20;i>=0;i--)if(dep[f[u][i]]>=dep[anc])ans=min(ans,mini[u][i]),u=f[u][i];
+	return ans;
+}
+int get_lca(int a,int b){
+	if(dep[a]<dep[b])swap(a,b);
+	for(int i=20;i>=0;i--)if(dep[f[a][i]]>=dep[b])a=f[a][i];
+	if(a==b)return a;
+	for(int i=20;i>=0;i--)if(f[a][i]!=f[b][i])a=f[a][i],b=f[b][i];
+	return f[a][0];
+}
+namespace Graph{
+	int n;
+	vector<pair<int,ll> >ed[maxn];
+	ll f[maxn][2];
+	bool spc[maxn];
+	void init(int nn){
+		n=nn;
+		for(int i=1;i<=n;i++)ed[i].clear();
+	}
+	void dfs(int u,int fa){
+		f[u][0]=f[u][1]=0;
+		if(spc[u])f[u][0]=inf;
+		else f[u][1]=inf;
+		for(auto [v,w]:ed[u]){
+			if(v==fa)continue;
+			dfs(v,u);
+			ll tmp[2];
+			for(int o=0;o<2;o++)tmp[o]=f[u][o],f[u][o]=inf;
+			for(int o1=0;o1<2;o1++){
+				for(int o2=0;o2<2;o2++){
+					f[u][o1|o2]=min(f[u][o1|o2],f[v][o2]+tmp[o1]);
+					f[u][o1]=min(f[u][o1],f[v][o2]+tmp[o1]+w);
+				}
+			}
+		}
+	}
+}
+bool spc[maxn];
+int id[maxn];
+signed main(){
+	ios::sync_with_stdio(0);
+	cin>>n;
+	for(int i=1;i<n;i++){
+		int u,v,w;cin>>u>>v>>w;
+		ed[u].emplace_back(mkp(v,w));
+		ed[v].emplace_back(mkp(u,w));
+	}
+	dfs(1,0);
+	cin>>m;
+	for(int i=1;i<=m;i++){
+		int k;cin>>k;
+		vector<int>pnt;
+		for(int j=1;j<=k;j++){
+			int x;cin>>x;
+			spc[x]=1;
+			pnt.emplace_back(x);
+		}
+		pnt.emplace_back(1);
+		sort(pnt.begin(),pnt.end(),[&](int x,int y){return dfn[x]<dfn[y];});
+		pnt.erase(unique(pnt.begin(),pnt.end()),pnt.end());
+		int sz=pnt.size();
+		for(int i=0;i<sz-1;i++)pnt.emplace_back(get_lca(pnt[i],pnt[i+1]));
+		sort(pnt.begin(),pnt.end(),[&](int x,int y){return dfn[x]<dfn[y];});
+		pnt.erase(unique(pnt.begin(),pnt.end()),pnt.end());
+		Graph::init(pnt.size());
+		for(int i=0;i<pnt.size();i++)id[pnt[i]]=i+1;
+		for(int i=0;i<pnt.size()-1;i++){
+			int l=get_lca(pnt[i],pnt[i+1]);
+			int w=get_weight(pnt[i+1],l);
+			Graph::ed[id[l]].emplace_back(mkp(id[pnt[i+1]],w));
+			Graph::ed[id[pnt[i+1]]].emplace_back(mkp(id[l],w));
+		}
+		for(auto x:pnt)Graph::spc[id[x]]=spc[x];
+		Graph::dfs(1,0);
+		cout<<Graph::f[1][0]<<'\n';
+		for(auto x:pnt)id[x]=spc[x]=0;
+	}
+	return 0;
+}
+```
+
 ## 三、DS
 
 ### 1.莫队

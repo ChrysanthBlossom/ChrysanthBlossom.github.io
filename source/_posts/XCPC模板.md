@@ -1389,3 +1389,249 @@ signed main(){
 	return 0;
 }
 ```
+
+### 笛卡尔树
+
+还是要知道 $O(n)$ 怎么写的。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=5e5+7;
+const int inf=1e9;
+int n;
+int p[maxn];
+int pre[maxn],suf[maxn];
+int ls[maxn],rs[maxn];
+signed main(){
+	ios::sync_with_stdio(0);
+	cin>>n;
+	for(int i=1;i<=n;i++)cin>>p[i];
+	p[0]=p[n+1]=-inf;
+	vector<int>st;
+	
+	st.emplace_back(0);
+	for(int i=1;i<=n;i++){
+		while(p[i]<p[st.back()])st.pop_back();
+		pre[i]=st.back();
+		st.emplace_back(i);
+	}
+	st.clear();
+
+	st.emplace_back(n+1);
+	for(int i=n;i;i--){
+		while(p[i]<p[st.back()])st.pop_back();
+		suf[i]=st.back();
+		st.emplace_back(i);
+	}
+
+	for(int i=1;i<=n;i++)ls[i]=inf,rs[i]=-inf;
+	for(int i=1;i<=n;i++){
+		if(pre[i]!=0)rs[pre[i]]=max(rs[pre[i]],i);
+		if(suf[i]!=n+1)ls[suf[i]]=min(ls[suf[i]],i);
+	}
+	for(int i=1;i<=n;i++){
+		if(ls[i]==inf)ls[i]=0;
+		if(rs[i]==-inf)rs[i]=0;
+	}
+	return 0;
+}
+```
+
+### 线段树合并
+
+**记得 `return`，记得最后赋值到根上**
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=5e5+7;
+const int inf=1e9;
+int n,m;
+namespace SegT{
+	struct node{
+		int ls,rs;
+		pair<int,int>maxi;
+	}tree[10000007];
+	int tot;
+	#define ls(o) (tree[o].ls)
+	#define rs(o) (tree[o].rs)
+	int new_node(){
+		++tot;
+		tree[tot].ls=tree[tot].rs=0;
+		tree[tot].maxi=mkp(0,0);
+		return tot;
+	}
+	void push_up(int o){
+		tree[o].maxi=max(tree[ls(o)].maxi,tree[rs(o)].maxi);
+	}
+	void update(int &o,int l,int r,int p,int k){
+		if(!o)o=new_node();
+		if(l==r){
+			tree[o].maxi.first+=k;
+			tree[o].maxi.second=-p;
+			return ;
+		}
+		int mid=l+r>>1;
+		if(p<=mid)update(ls(o),l,mid,p,k);
+		else update(rs(o),mid+1,r,p,k);
+		push_up(o);
+	}
+	int merge(int a,int b,int l,int r){
+		if(!a||!b)return a+b;
+		if(l==r){
+			tree[a].maxi.first+=tree[b].maxi.first;
+			return a;
+		}
+		int mid=l+r>>1;
+		ls(a)=merge(ls(a),ls(b),l,mid);
+		rs(a)=merge(rs(a),rs(b),mid+1,r);
+		push_up(a);
+		return a;
+	}
+}
+int dep[maxn],f[maxn][26];
+vector<int>ed[maxn];
+void dfs(int u,int fa){
+	dep[u]=dep[fa]+1;
+	f[u][0]=fa;
+	for(int i=1;i<=20;i++)f[u][i]=f[f[u][i-1]][i-1];
+	for(auto v:ed[u]){
+		if(v==fa)continue;
+		dfs(v,u);
+	}
+}
+int get_lca(int a,int b){
+	if(dep[a]<dep[b])swap(a,b);
+	for(int i=20;i>=0;i--)if(dep[f[a][i]]>=dep[b])a=f[a][i];
+	if(a==b)return a;
+	for(int i=20;i>=0;i--)if(f[a][i]!=f[b][i])a=f[a][i],b=f[b][i];
+	return f[a][0];
+}
+int root[maxn];
+int ans[maxn];
+void dfs2(int u,int fa){
+	for(auto v:ed[u]){
+		if(v==fa)continue;
+		dfs2(v,u);
+		root[u]=SegT::merge(root[u],root[v],1,1e5);
+	}
+	pair<int,int>maxi=SegT::tree[root[u]].maxi;
+	if(maxi.first==0)ans[u]=0;
+	else ans[u]=-maxi.second;
+}
+signed main(){
+	ios::sync_with_stdio(0);
+	cin>>n>>m;
+	for(int i=1;i<n;i++){
+		int u,v;cin>>u>>v;
+		ed[u].emplace_back(v);ed[v].emplace_back(u);
+	}
+	dfs(1,0);
+	for(int i=1;i<=m;i++){
+		int x,y,z;cin>>x>>y>>z;
+		int l=get_lca(x,y);
+		SegT::update(root[x],1,1e5,z,1);
+		SegT::update(root[y],1,1e5,z,1);
+		SegT::update(root[l],1,1e5,z,-1);
+		SegT::update(root[f[l][0]],1,1e5,z,-1);
+	}
+	dfs2(1,0);
+	for(int i=1;i<=n;i++)cout<<ans[i]<<'\n';
+	return 0;
+}
+```
+
+### CDQ
+
+注意清空。
+
+注意归并边界条件，以及中间是或。
+
+注意对相同值的处理。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=5e5+7;
+const int inf=1e9;
+int n,K;
+namespace BIT{
+	int tree[maxn];
+	int lowbit(int x){
+		return x&(-x);
+	}
+	void add(int p,int k){
+		while(p<=K){
+			tree[p]+=k;
+			p+=lowbit(p);
+		}
+	}
+	int query(int p){
+		int ans=0;
+		while(p)ans+=tree[p],p-=lowbit(p);
+		return ans;
+	}
+}
+int a[maxn],b[maxn],c[maxn];
+int val[maxn];
+int tmp[maxn];
+int f[maxn];
+void solve(int l,int r){
+	if(l==r)return;
+	int mid=l+r>>1;
+	solve(l,mid);solve(mid+1,r);
+	int p1=l,p2=mid+1;
+	int tot=0;
+	while(p1<=mid||p2<=r){
+		bool chs=-1;
+		if(p1>mid)chs=1;
+		else if(p2>r)chs=0;
+		else if(b[val[p1]]<=b[val[p2]])chs=0;
+		else chs=1;
+		if(chs==0){
+			BIT::add(c[val[p1]],1);
+			tmp[++tot]=val[p1++];
+		}
+		else{
+			f[val[p2]]+=BIT::query(c[val[p2]]);
+			tmp[++tot]=val[p2++];
+		}
+	}
+	for(int i=l;i<=mid;i++)BIT::add(c[val[i]],-1);
+	for(int i=l;i<=r;i++)val[i]=tmp[i-l+1];
+}
+int ans[maxn];
+map<tuple<int,int,int>,int>cnt;
+signed main(){
+	ios::sync_with_stdio(0);
+	cin>>n>>K;
+	for(int i=1;i<=n;i++)cin>>a[i]>>b[i]>>c[i];
+	for(int i=1;i<=n;i++)val[i]=i;
+	sort(val+1,val+1+n,[&](int x,int y){
+		if(a[x]!=a[y])return a[x]<a[y];
+		if(b[x]!=b[y])return b[x]<b[y];
+		return c[x]<c[y];
+	});
+	solve(1,n);
+	for(int i=1;i<=n;i++)cnt[mkt(a[i],b[i],c[i])]=max(cnt[mkt(a[i],b[i],c[i])],f[i]);
+	for(int i=1;i<=n;i++)ans[cnt[mkt(a[i],b[i],c[i])]]++;
+	for(int i=0;i<n;i++)cout<<ans[i]<<'\n';
+	return 0;
+}
+```

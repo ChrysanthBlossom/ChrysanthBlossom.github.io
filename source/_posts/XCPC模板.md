@@ -1792,3 +1792,44 @@ signed main(){
 	return 0;
 }
 ```
+
+### Manacher
+
+注意补全之后其实并不需要对中心不同的情况进行分讨，这或许也是补全的好处（
+
+然后需要二倍空间。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=2.2e7+7;
+int r[maxn];
+int n;
+char s[maxn];
+signed main(){
+	ios::sync_with_stdio(0);
+	string tmp;cin>>tmp;n=tmp.size();for(int i=1;i<=n;i++)s[i*2]=tmp[i-1];
+	n=2*n+1;
+	for(int i=1;i<=n;i++)if(i&1)s[i]='*';
+	s[1]='*';s[n]='*';
+	r[1]=0;
+	pair<int,int>maxi=mkp(1,1);
+	for(int i=2;i<=n;i++){
+		if(i>maxi.first)r[i]=0;
+		else r[i]=min(r[2*maxi.second-i],maxi.first-i);
+		while(i-r[i]-1>=1&&i+r[i]+1<=n&&s[i-r[i]-1]==s[i+r[i]+1])r[i]++;
+		maxi=max(maxi,mkp(i+r[i],i));
+	}
+	int ans=0;
+	for(int i=2;i<n;i++){
+		ans=max(ans,r[i]);
+	}
+	cout<<ans<<endl;
+	return 0;
+}
+```

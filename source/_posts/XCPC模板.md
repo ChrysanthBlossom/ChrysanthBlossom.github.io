@@ -863,6 +863,60 @@ signed main(){
 }
 ```
 
+### 4.差分约束
+
+注意要建虚点。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=5e5+7;
+const int inf=1e9;
+int n,m;
+vector<pair<int,int> >ed[maxn];
+int dis[maxn];
+int popcnt[maxn];
+bool inq[maxn];
+void spfa(){
+	for(int i=1;i<=n+1;i++)dis[i]=inf,popcnt[i]=0,inq[i]=0;
+	dis[n+1]=0;queue<int>q;q.push(n+1);inq[n+1]=1;
+	while(!q.empty()){
+		int u=q.front();q.pop();
+		inq[u]=0;popcnt[u]++;
+		if(popcnt[u]>n){
+			cout<<"NO\n";
+			exit(0);
+		}
+		for(auto [v,w]:ed[u]){
+			if(dis[u]+w<dis[v]){
+				dis[v]=dis[u]+w;
+				if(!inq[v]){
+					inq[v]=1;
+					q.push(v);
+				}
+			}
+		}
+	}
+}
+signed main(){
+	ios::sync_with_stdio(0);
+	cin>>n>>m;
+	for(int i=1;i<=m;i++){
+		int u,v,w;cin>>v>>u>>w;
+		ed[u].emplace_back(mkp(v,w));
+	}
+	for(int i=1;i<=n;i++)ed[n+1].emplace_back(mkp(i,0));
+	spfa();
+	for(int i=1;i<=n;i++)cout<<dis[i]<<' ';cout<<endl;
+	return 0;
+}
+```
+
 ## 三、DS
 
 ### 1.莫队

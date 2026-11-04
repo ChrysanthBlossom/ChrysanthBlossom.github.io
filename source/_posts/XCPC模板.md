@@ -1750,3 +1750,45 @@ signed main(){
 	return 0;
 }
 ```
+
+## 四、字符串
+
+### KMP
+
+注意串间匹配时可能会越界。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=1e6+7;
+int n,m;
+char a[maxn],b[maxn];
+int kmp[maxn];
+signed main(){
+	ios::sync_with_stdio(0);
+	string tmp;
+	cin>>tmp;n=tmp.size();for(int i=1;i<=n;i++)a[i]=tmp[i-1];
+	cin>>tmp;m=tmp.size();for(int i=1;i<=m;i++)b[i]=tmp[i-1];
+	kmp[1]=0;
+	for(int i=2;i<=m;i++){
+		kmp[i]=kmp[i-1];
+		while(kmp[i]&&b[kmp[i]+1]!=b[i])kmp[i]=kmp[kmp[i]];
+		if(b[kmp[i]+1]==b[i])kmp[i]++;
+	}
+	int now=0;
+	for(int i=1;i<=n;i++){
+		while(now&&(now+1>m||b[now+1]!=a[i]))now=kmp[now];
+		if(b[now+1]==a[i])now++;
+		if(now==m){
+			cout<<i-m+1<<endl;
+		}
+	}
+	for(int i=1;i<=m;i++)cout<<kmp[i]<<' ';cout<<endl;
+	return 0;
+}
+```

@@ -1032,6 +1032,76 @@ signed main(){
 }
 ```
 
+### 树哈希
+
+哈希函数可能为了适配双哈希要换个实现。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=50+7;
+const ll inf=1e15;
+const int B1=10003,B2=2009;
+const int XX=103;
+const ull mask = mt19937_64(time(0))();
+ull gg(ull x) {
+    return (x ^= mask, x ^= x << 13, x ^= x >> 7, x ^= x << 17) ^ mask;
+}
+struct Tree{
+	pair<ull,ull>f[maxn];
+	vector<int>ed[maxn];
+	int n;
+	int siz[maxn],maxi[maxn];
+	int root;
+	int root2;
+	pair<ull,ull>hsh;
+	void dfs1(int u,int fa){
+		maxi[u]=0;
+		siz[u]=1;
+		for(auto v:ed[u]){
+			if(v==fa)continue;
+			dfs1(v,u);
+			siz[u]+=siz[v];
+			maxi[u]=max(maxi[u],siz[v]);
+		}
+		maxi[u]=max(maxi[u],n-siz[u]);
+		if(!root||maxi[u]<maxi[root])root=u;
+		else if(maxi[u]==maxi[root])root2=u;
+	}
+	void dfs2(int u,int fa){
+		f[u]=mkp(0,0);
+		for(auto v:ed[u]){
+			if(v==fa)continue;
+			dfs2(v,u);
+			f[u].first+=gg(f[v].first);
+			f[u].second+=gg(f[v].second);
+		}
+		f[u].first+=B1;
+		f[u].second+=B2;
+	}
+	void solve(){
+		root=0;root2=-1;
+		dfs1(1,0);
+		dfs2(root,0);
+		hsh=f[root];
+		if(root2!=-1&&maxi[root]==maxi[root2]){
+			dfs2(root2,0);
+			hsh=min(hsh,f[root2]);
+		}
+	}
+}tr[maxn];
+bool same(Tree &a,Tree &b){
+	if(a.n!=b.n)return 0;
+	if(a.hsh==b.hsh)return 1;
+	return 0;
+}
+```
+
 ## 三、DS
 
 ### 莫队

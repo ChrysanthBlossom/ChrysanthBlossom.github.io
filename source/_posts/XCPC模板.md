@@ -1903,3 +1903,51 @@ signed main(){
 	return 0;
 }
 ```
+
+### Z 函数
+
+注意两个数组别打反。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=2e7+7;
+const ll inf=1e15;
+int z[maxn];
+int p[maxn];
+int n,m;
+char a[maxn],b[maxn];
+signed main(){
+	ios::sync_with_stdio(0);
+	string tmp;
+	cin>>tmp;n=tmp.size();for(int i=1;i<=n;i++)a[i]=tmp[i-1];
+	cin>>tmp;m=tmp.size();for(int i=1;i<=m;i++)b[i]=tmp[i-1];
+	z[1]=m;
+	pair<int,int>maxi=mkp(0,1);
+	for(int i=2;i<=m;i++){
+		if(maxi.first>=i){
+			z[i]=min(z[i-maxi.second+1],maxi.first-i+1);
+		}
+		while(i+z[i]<=m&&b[i+z[i]]==b[z[i]+1])z[i]++;
+		maxi=max(maxi,mkp(i+z[i]-1,i));
+	}
+	maxi=mkp(0,1);
+	for(int i=1;i<=n;i++){
+		if(maxi.first>=i){
+			p[i]=min(z[i-maxi.second+1],maxi.first-i+1);
+		}
+		while(i+p[i]<=n&&p[i]+1<=m&&b[p[i]+1]==a[i+p[i]])p[i]++;
+		maxi=max(maxi,mkp(i+p[i]-1,i));
+	}
+	ll val1=0;for(int i=1;i<=m;i++)val1^=1ll*i*(z[i]+1);
+	ll val2=0;for(int i=1;i<=n;i++)val2^=1ll*i*(p[i]+1);
+	cout<<val1<<endl;
+	cout<<val2<<endl;
+	return 0;
+}
+```

@@ -2049,3 +2049,61 @@ signed main(){
 	return 0;
 }
 ```
+
+## SA
+
+注意 $n=1$ 的时候 rk 并不是真实排名。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=3e6+7;
+const ll inf=1e15;
+int n;
+char s[maxn];
+int rnk[maxn];
+int bkrnk[maxn];
+int tot;
+vector<int>buc[maxn];
+int inv[maxn];
+signed main(){
+	ios::sync_with_stdio(0);
+	string tmp;cin>>tmp;
+	n=tmp.size();for(int i=1;i<=n;i++)s[i]=tmp[i-1];
+	if(n==1){
+		cout<<1<<endl;
+		return 0;
+	}
+	for(int i=1;i<=n;i++)rnk[i]=s[i];
+	tot=256;
+	for(int t=0;1<<t<n;t++){
+		vector<int>tmp;
+		for(int i=1;i<=n;i++)bkrnk[i]=rnk[i+(1<<t)];
+		for(int i=1;i<=n;i++)buc[bkrnk[i]].push_back(i);
+		for(int i=0;i<=tot;i++){
+			for(auto x:buc[i])tmp.push_back(x);
+		}
+		for(int i=0;i<=tot;i++)buc[i].clear();
+		for(auto x:tmp)buc[rnk[x]].push_back(x);
+		int rk=0;
+		for(int i=0;i<=tot;i++){
+			int pre=-1;
+			for(auto x:buc[i]){
+				if(bkrnk[x]!=pre)rnk[x]=++rk;
+				else rnk[x]=rk;
+				pre=bkrnk[x];
+			}
+		}
+		for(int i=0;i<=tot;i++)buc[i].clear();
+		tot=rk;
+	}
+	for(int i=1;i<=n;i++)inv[rnk[i]]=i;
+	for(int i=1;i<=n;i++)cout<<inv[i]<<' ';cout<<endl;
+	return 0;
+}
+```

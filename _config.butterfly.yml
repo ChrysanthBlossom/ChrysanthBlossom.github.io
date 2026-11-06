@@ -95,3 +95,25 @@ search:
     pagination:
       enable: false
       hitsPerPage: 8
+
+# ------------------------------------------------------
+# 访客来源统计（Flag Counter 图片探针）
+#
+# 原理：图片一被浏览器加载，就等于向 Flag Counter 的服务器发了一次请求，
+# 对方根据请求的 IP 判断访客国家/地区并计数，返回一张实时生成的 PNG。
+# 因为是 <img> 而不是 JS，所以不受跨域限制，静态博客也能用。
+#
+# 点图片可看各国/地区明细：https://s05.flagcounter.com/more/Nq8c/
+# 想换样式就重新在 flagcounter.com 生成一段代码，替换下面的 URL。
+# ------------------------------------------------------
+inject:
+  head:
+  bottom:
+    - |
+      <div style="text-align:center;padding:16px 0 8px;">
+        <a href="https://s05.flagcounter.com/more/Nq8c/" target="_blank" rel="noopener">
+          <img src="https://s05.flagcounter.com/count/Nq8c/bg_FFFFFF/txt_000000/border_CCCCCC/columns_8/maxflags_10/viewers_0/labels_0/pageviews_0/flags_1/percent_0/"
+               alt="访客来源统计" title="点击查看各国/地区访客明细"
+               style="max-width:100%;height:auto;border:0;">
+        </a>
+      </div>

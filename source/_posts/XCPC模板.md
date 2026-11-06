@@ -2107,3 +2107,40 @@ signed main(){
 	return 0;
 }
 ```
+
+最小表示法
+
+咋新学的调都没调就过了。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=2e7+7;
+const ll inf=1e15;
+int n;
+char s[maxn];
+bool vis[maxn];
+signed main(){
+	ios::sync_with_stdio(0);
+	cin>>n;
+	for(int i=1;i<=n;i++)cin>>s[i];
+	for(int i=1;i<=n;i++)s[i+n]=s[i];
+	int s1=1,s2=2;
+	while(1){
+		int l=1;
+		while(l<=n&&s[s1+l-1]==s[s2+l-1])l++;
+		if(l>n)break;
+		if(s[s1+l-1]>s[s2+l-1])swap(s1,s2);
+		for(int i=s2;i<=s2+l-1;i++)vis[i]=1;
+		while(s2<=n&&(s2==s1||vis[s2]))s2++;
+		if(s2>n)break;
+	}
+	for(int i=1;i<=n;i++)cout<<s[s1+i-1];cout<<endl;
+	return 0;
+}
+```

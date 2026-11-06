@@ -2,9 +2,9 @@
 title: XCPC 模板
 date: 2026-10-31 20:34:13
 tags:
-  - 模板
+  - 阴雨霉湿之地
 categories:
-  - CP
+  - 模板
 description: ''
 ---
 

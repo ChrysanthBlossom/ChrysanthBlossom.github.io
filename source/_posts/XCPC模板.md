@@ -1951,3 +1951,101 @@ signed main(){
 	return 0;
 }
 ```
+
+### AC 自动机
+
+注意对根的特殊处理。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=2e6+7;
+const ll inf=1e15;
+namespace ACAM{
+	struct node{
+		int ch[26];
+		int fail;
+		int sum;
+	}tree[maxn];
+	int root=1,tot=1;
+	void init(){
+		for(int i=1;i<=tot;i++){
+			tree[i].fail=0,tree[i].sum=0;
+			for(int j=0;j<26;j++)tree[i].ch[j]=0;
+		}
+		root=1;tot=1;
+	}
+	int add(string s){
+		int now=root;
+		for(int i=0;i<s.length();i++){
+			if(!tree[now].ch[s[i]-'a'])tree[now].ch[s[i]-'a']=++tot;
+			now=tree[now].ch[s[i]-'a'];
+		}
+		return now;
+	}
+	void build(){
+		queue<int>q;
+		tree[1].fail=1;
+		for(int j=0;j<26;j++){
+			if(!tree[1].ch[j])tree[1].ch[j]=1;
+			else {
+				tree[tree[1].ch[j]].fail=1;
+				q.push(tree[1].ch[j]);
+			}
+		}
+		while(!q.empty()){
+			int u=q.front();q.pop();
+			// cout<<u<<endl;
+			for(int j=0;j<26;j++){
+				if(tree[u].ch[j]){
+					tree[tree[u].ch[j]].fail=tree[tree[u].fail].ch[j];
+					q.push(tree[u].ch[j]);
+				}
+				else tree[u].ch[j]=tree[tree[u].fail].ch[j];
+			}
+		}
+	}
+	int d[maxn];
+	void solve(string s){
+		int now=root;
+		for(int i=0;i<s.length();i++){
+			now=tree[now].ch[s[i]-'a'];
+			tree[now].sum++;
+		}
+		for(int i=1;i<=tot;i++){
+			d[i]=0;
+		}
+		for(int i=2;i<=tot;i++){
+			d[tree[i].fail]++;
+		}
+		queue<int>q;
+		for(int i=1;i<=tot;i++)if(!d[i])q.push(i);
+		while(!q.empty()){
+			int u=q.front();q.pop();
+			if(u==1)continue;
+			tree[tree[u].fail].sum+=tree[u].sum;
+			d[tree[u].fail]--;
+			if(!d[tree[u].fail])q.push(tree[u].fail);
+		}
+	}
+}
+int edpos[maxn];
+signed main(){
+	ios::sync_with_stdio(0);
+	int n;cin>>n;
+	for(int i=1;i<=n;i++){
+		string s;cin>>s;
+		edpos[i]=ACAM::add(s);
+	}
+	ACAM::build();
+	string s;cin>>s;
+	ACAM::solve(s);
+	for(int i=1;i<=n;i++)cout<<ACAM::tree[edpos[i]].sum<<'\n';
+	return 0;
+}
+```

@@ -1821,6 +1821,99 @@ signed main(){
 }
 ```
 
+### 点分治
+
+放的板子，但是是能拓展的一版（正着统计一遍，反着统计一遍）
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=4e4+7;
+const ll inf=1e15;
+int n,m;
+vector<pair<int,int> >ed[maxn];
+int root;
+int maxi[maxn],siz[maxn];
+bool vis[maxn];
+void get_root(int u,int fa,int total){
+    siz[u]=1;maxi[u]=0;
+    for(auto [v,w]:ed[u]){
+        if(vis[v]||v==fa)continue;
+        get_root(v,u,total);
+        siz[u]+=siz[v];
+        maxi[u]=max(maxi[u],siz[v]);
+    }
+    maxi[u]=max(maxi[u],total-siz[u]);
+    if(!root||maxi[u]<maxi[root])root=u;
+}
+vector<int>pnt;
+void dfs(int u,int fa,int fr,int dp){
+    pnt.emplace_back(dp);
+    siz[u]=1;
+    for(auto [v,w]:ed[u]){
+        if(v==fa||vis[v])continue;
+        dfs(v,u,fr,dp+w);
+        siz[u]+=siz[v];
+    }
+}
+int qry[maxn];
+int cnt[10000007];
+int ans[maxn];
+void solve(int u){
+    vis[u]=1;
+    cnt[0]=1;
+    for(auto [v,w]:ed[u]){
+        if(vis[v])continue;
+        pnt.clear();
+        dfs(v,u,v,w);
+        for(auto d:pnt){
+            for(int i=1;i<=m;i++){
+                if(qry[i]>=d&&cnt[qry[i]-d])ans[i]=1;
+            }
+        }
+        for(auto d:pnt)if(d<=1e7)cnt[d]++;
+    }
+    for(auto [v,w]:ed[u]){
+        if(vis[v])continue;
+        pnt.clear();
+        dfs(v,u,v,w);
+        for(auto d:pnt)if(d<=1e7)cnt[d]--;
+        for(auto d:pnt){
+            for(int i=1;i<=m;i++){
+                if(qry[i]>=d&&cnt[qry[i]-d])ans[i]=1;
+            }
+        }
+    }
+    cnt[0]=0;
+    for(auto [v,w]:ed[u]){
+        if(vis[v])continue;
+        root=0;get_root(v,u,siz[v]);
+        solve(root);
+    }
+}
+signed main(){
+	ios::sync_with_stdio(0);
+    cin>>n>>m;
+    for(int i=2;i<=n;i++){
+        int u,v,w;cin>>u>>v>>w;
+        ed[u].emplace_back(mkp(v,w));ed[v].emplace_back(mkp(u,w));
+    }
+    for(int i=1;i<=m;i++)cin>>qry[i];
+    root=0;
+    get_root(1,0,n);
+    solve(root);
+    for(int i=1;i<=m;i++){
+        cout<<(ans[i]?"AYE\n":"NAY\n");
+    }
+	return 0;
+}
+```
+
 ## 四、字符串
 
 ### KMP

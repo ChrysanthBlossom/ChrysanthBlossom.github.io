@@ -2480,3 +2480,50 @@ signed main(){
 	return 0;
 }
 ```
+
+## 六、数论
+
+### exgcd
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=1e6+7;
+const ll inf=1e14;
+const int mod=1e9+7;
+pair<ll,ll>exgcd(ll a,ll b){
+    if(!b)return mkp(1,0);
+    auto [_x,_y]=exgcd(b,a%b);
+    return mkp(_y,_x-a/b*_y);
+}
+void solve(){
+    ll a,b,c;cin>>a>>b>>c;
+    ll g=__gcd(a,b);
+    if(c%g){
+        cout<<-1<<'\n';
+        return;
+    }
+    a/=g;b/=g;c/=g;
+    auto [x,y]=exgcd(a,b);
+    x*=c;y*=c;
+    ll x1=(x%b+b)%b;if(x1==0)x1+=b;
+    ll y1=(c-a*x1)/b;
+    ll y2=(y%a+a)%a;if(y2==0)y2+=a;
+    ll x2=(c-b*y2)/a;
+    if(y1>0){
+        cout<<(x2-x1)/b+1<<' '<<x1<<' '<<y2<<' '<<x2<<' '<<y1<<'\n';
+    }
+    else cout<<x1<<' '<<y2<<'\n';
+}
+signed main(){
+	ios::sync_with_stdio(0);
+    int T;cin>>T;
+    while(T--)solve();
+	return 0;
+}
+```

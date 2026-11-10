@@ -2280,3 +2280,43 @@ signed main(){
 	return 0;
 }
 ```
+
+### 行列式
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=6e2+7;
+const int inf=1e9;
+const ld eps=1e-9;
+int n,mod;
+ll mat[maxn][maxn];
+signed main(){
+	ios::sync_with_stdio(0);
+    cin>>n>>mod;
+    for(int i=1;i<=n;i++){
+        for(int j=1;j<=n;j++)cin>>mat[i][j];
+    }
+    ll ans=1;
+    for(int i=1;i<=n;i++){
+        for(int j=i+1;j<=n;j++){
+            while(mat[i][i]){
+                ll d=mat[j][i]/mat[i][i];
+                for(int k=1;k<=n;k++)mat[j][k]=(mat[j][k]-mat[i][k]*d%mod+mod)%mod;
+                ans=mod-ans;
+                swap(mat[i],mat[j]);
+            }
+            ans=mod-ans;
+            swap(mat[i],mat[j]);
+        }
+    }
+    for(int i=1;i<=n;i++)ans=ans*mat[i][i]%mod;
+    cout<<ans<<endl;
+	return 0;
+}
+```

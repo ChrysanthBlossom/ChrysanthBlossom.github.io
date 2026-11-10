@@ -1914,6 +1914,166 @@ signed main(){
 }
 ```
 
+### ddp
+
+尽量使用列向量。
+
+记得维护每个轻链对父亲的贡献。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=1e5+7;
+const ll inf=1e14;
+const ld eps=1e-9;
+int n,m;
+struct Matrix{
+    ll mat[2][2];
+    friend Matrix operator * (Matrix a,Matrix b){
+        Matrix c;
+        for(int i=0;i<2;i++){
+            for(int j=0;j<2;j++){
+                c.mat[i][j]=0;
+                for(int k=0;k<2;k++)c.mat[i][j]=max(c.mat[i][j],a.mat[i][k]+b.mat[k][j]);
+            }
+        }
+        return c;
+    }
+}ept,ini_vec;
+Matrix g2M(pair<ll,ll>g){
+    Matrix val;
+    val.mat[0][0]=-inf;
+    val.mat[0][1]=g.second;
+    val.mat[1][0]=g.first;
+    val.mat[1][1]=g.second;
+    return val;
+}
+void init(){
+    for(int i=0;i<2;i++){
+        for(int j=0;j<2;j++){
+            ept.mat[i][j]=(i==j?0:-inf);
+            ini_vec.mat[i][j]=(j==0?0:-inf);
+        }
+    }
+}
+namespace SegT{
+    struct node{
+        int l,r;
+        Matrix val;
+    }tree[maxn<<2];
+    #define ls(o) (o<<1)
+    #define rs(o) (o<<1|1)
+    void push_up(int o){
+        tree[o].val=tree[ls(o)].val*tree[rs(o)].val;
+    }
+    void build(int o,int l,int r){
+        tree[o].l=l,tree[o].r=r;
+        if(l==r){
+            tree[o].val.mat[0][0]=-inf;
+            tree[o].val.mat[0][1]=tree[o].val.mat[1][0]=tree[o].val.mat[1][1]=0;
+            return;
+        }
+        int mid=l+r>>1;
+        build(ls(o),l,mid);build(rs(o),mid+1,r);
+        push_up(o);
+    }
+    void update(int o,int p,Matrix k){
+        if(tree[o].l==tree[o].r){
+            tree[o].val=k;
+            return;
+        }
+        int mid=tree[o].l+tree[o].r>>1;
+        if(p<=mid)update(ls(o),p,k);
+        else update(rs(o),p,k);
+        push_up(o);
+    }
+    Matrix query(int o,int l,int r){
+        if(l<=tree[o].l&&tree[o].r<=r)return tree[o].val;
+        int mid=tree[o].l+tree[o].r>>1;
+        Matrix ans=ept;
+        if(l<=mid)ans=ans*query(ls(o),l,r);
+        if(r>mid)ans=ans*query(rs(o),l,r);
+        return ans;
+    }
+}
+vector<int>ed[maxn];
+int f[maxn],dep[maxn],son[maxn],siz[maxn];
+void dfs1(int u,int fa){
+    f[u]=fa;
+    dep[u]=dep[fa]+1;
+    siz[u]=1;
+    for(auto v:ed[u]){
+        if(v==fa)continue;
+        dfs1(v,u);
+        siz[u]+=siz[v];
+        if(siz[v]>siz[son[u]])son[u]=v;
+    }
+}
+int tot,dfn[maxn],top[maxn],btm[maxn];
+void dfs2(int u,int tp){
+    dfn[u]=++tot;
+    top[u]=tp;
+    if(son[u])dfs2(son[u],tp);
+    else btm[top[u]]=u;
+    for(auto v:ed[u]){
+        if(v!=f[u]&&v!=son[u])dfs2(v,v);
+    }
+}
+ll ctbt[maxn][2];
+ll g[maxn][2];
+int a[maxn];
+int b[maxn];
+ll update(int p,int k){
+    g[p][0]-=a[p];
+    a[p]=k;
+    g[p][0]+=a[p];
+    SegT::update(1,dfn[p],g2M(mkp(g[p][0],g[p][1])));
+    int now=btm[top[p]];
+    while(now){
+        Matrix val=ini_vec;
+        val=SegT::query(1,dfn[top[now]],dfn[now])*val;
+        if(f[top[now]]==0)return val.mat[1][0];
+        g[f[top[now]]][0]-=ctbt[top[now]][0];
+        g[f[top[now]]][1]-=ctbt[top[now]][1];
+        ctbt[top[now]][0]=val.mat[0][0];
+        ctbt[top[now]][1]=val.mat[1][0];
+        g[f[top[now]]][0]+=ctbt[top[now]][0];
+        g[f[top[now]]][1]+=ctbt[top[now]][1];
+        SegT::update(1,dfn[f[top[now]]],g2M(mkp(g[f[top[now]]][0],g[f[top[now]]][1])));
+        now=btm[top[f[top[now]]]];
+    }
+    assert(0);
+}
+signed main(){
+	ios::sync_with_stdio(0);
+    init();
+    cin>>n>>m;
+    for(int i=1;i<=n;i++)cin>>b[i];
+    for(int i=2;i<=n;i++){
+        int u,v;cin>>u>>v;
+        ed[u].emplace_back(v);
+        ed[v].emplace_back(u);
+    }
+    dfs1(1,0);
+    dfs2(1,1);
+    SegT::build(1,1,n);
+    ll ans=0;
+    for(int i=1;i<=n;i++)ans=update(i,b[i]);
+    // cout<<ans<<endl;
+    for(int i=1;i<=m;i++){
+        int x,y;cin>>x>>y;
+        ans=update(x,y);
+        cout<<ans<<endl;
+    }
+	return 0;
+}
+```
+
 ## 四、字符串
 
 ### KMP

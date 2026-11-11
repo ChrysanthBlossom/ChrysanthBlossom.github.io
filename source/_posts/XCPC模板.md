@@ -2527,3 +2527,45 @@ signed main(){
 	return 0;
 }
 ```
+
+### CRT
+
+注意 `__int128`
+
+式子是 $\sum_{i=1}^na_iM_it_i$，其中 $t_i$ 为 $M_i$ 模 $b_i$ 意义下的逆元。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=1e6+7;
+const ll inf=1e14;
+const int mod=1e9+7;
+pair<ll,ll>exgcd(ll a,ll b){
+    if(!b)return mkp(1,0);
+    auto [_x,_y]=exgcd(b,a%b);
+    return mkp(_y,_x-a/b*_y);
+}
+ll get_inv(ll a,ll m){
+    pair<ll,ll>sol=exgcd(a,m);
+    return (sol.first%m+m)%m;
+}
+pair<ll,ll>val[maxn];
+signed main(){
+	ios::sync_with_stdio(0);
+    int n;cin>>n;
+    for(int i=1;i<=n;i++)cin>>val[i].first>>val[i].second;
+    ll ans=0;
+    __int128 mul=1;for(int i=1;i<=n;i++)mul=mul*val[i].first;
+    for(int i=1;i<=n;i++){
+        __int128 M=mul/val[i].first;
+        ans=(ans+M*val[i].second%mul*get_inv(M,val[i].first)%mul)%mul;
+    }
+    cout<<ans<<endl;
+	return 0;
+}
+```

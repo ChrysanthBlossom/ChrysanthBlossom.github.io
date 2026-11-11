@@ -2569,3 +2569,55 @@ signed main(){
 	return 0;
 }
 ```
+
+### exCRT
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=1e6+7;
+const ll inf=1e14;
+const int mod=1e9+7;
+pair<ll,ll>exgcd(ll a,ll b){
+    if(!b)return mkp(1,0);
+    auto [_x,_y]=exgcd(b,a%b);
+    return mkp(_y,_x-a/b*_y);
+}
+__int128 gcd(__int128 a,__int128 b){
+    return (b==0?a:gcd(b,a%b));
+}
+struct seq{
+    __int128 a,b;
+    friend seq operator + (seq s1,seq s2){
+        if(s1.a==0||s2.a==0)return (seq){0,0};
+        __int128 g=gcd(s1.a,s2.a);
+        if((s2.b-s1.b)%g){
+            return (seq){0,0};
+        }
+        __int128 new_b=s2.b-s1.b;new_b/=g;
+        pair<__int128,__int128>sol=exgcd(s1.a/g,s2.a/g);
+        sol.first*=new_b;
+        __int128 new_a=s1.a/g*s2.a;
+        return (seq){new_a,((sol.first*s1.a%new_a+new_a)%new_a+s1.b)%new_a};
+    }
+}sq[maxn];
+signed main(){
+	ios::sync_with_stdio(0);
+    int n;cin>>n;
+    for(int i=1;i<=n;i++){
+        ll x,y;cin>>x>>y;
+        sq[i]=(seq){x,y};
+    }
+    seq ans=(seq){1,0};
+    for(int i=1;i<=n;i++){
+        ans=ans+sq[i];
+    }
+    cout<<(ll)ans.b<<endl;
+	return 0;
+}
+```

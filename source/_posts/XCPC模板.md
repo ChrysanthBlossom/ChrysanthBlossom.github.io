@@ -2655,3 +2655,73 @@ signed main(){
 	return 0;
 }
 ```
+
+### exBSGS
+
+注意对边界条件的特判。以及分块那里往后延要小心。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=1e6+7;
+const ll inf=1e14;
+pair<ll,ll> exgcd(ll a,ll b){
+    if(!b)return mkp(1,0);
+    auto [_x,_y]=exgcd(b,a%b);
+    return mkp(_y,_x-a/b*_y);
+}
+ll get_inv(ll x,ll mod){
+    auto [y,_]=exgcd(x,mod);
+    return (y%mod+mod)%mod;
+}
+ll BSGS(ll p,ll b,ll n){
+    map<ll,int>mp;
+    ll B=sqrt(p);
+    for(ll j=0,v=n;j<=B;j++,v=v*b%p){
+        mp[v]=j;
+    }
+    ll b_B=1;for(int i=1;i<=B;i++)b_B=b_B*b%p;
+    for(ll j=1,v=b_B;j*B-B<=p;j++,v=v*b_B%p){
+        if(mp[v]){
+            return j*B-mp[v];
+        }
+    }
+    return -1;
+}
+ll exBSGS(ll p,ll b,ll n){
+    if(p==1)return 0;
+    b%=p;n%=p;
+    for(ll i=0,v=1;i<=32;i++,v=v*b%p){
+        if(v==n)return i;
+    }
+    ll mul=1;int cnt=0;
+    while(__gcd(p,b)!=1){
+        ll g=__gcd(p,b);
+        if(n%g)return -1;
+        mul=mul*(b/g)%p;
+        n/=g;p/=g;
+        cnt++;
+    }
+    mul%=p;
+    n=n*get_inv(mul,p)%p;
+    ll val=BSGS(p,b,n);
+    if(val==-1)return -1;
+    return val+cnt;
+}
+signed main(){
+    ll p,b,n;
+    while(1){
+        scanf("%ld%ld%ld",&b,&p,&n);
+        if(p==0)return 0;
+        ll ans=exBSGS(p,b,n);
+        if(ans==-1)printf("No Solution\n");
+        else printf("%ld\n",ans);
+    }
+	return 0;
+}
+```

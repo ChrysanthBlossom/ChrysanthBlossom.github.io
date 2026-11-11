@@ -2621,3 +2621,37 @@ signed main(){
 	return 0;
 }
 ```
+
+### BSGS
+
+注意对分块边界进行审查。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=1e6+7;
+const ll inf=1e14;
+signed main(){
+	ios::sync_with_stdio(0);
+    ll p,b,n;cin>>p>>b>>n;
+    map<ll,int>mp;
+    ll B=sqrt(p);
+    for(ll j=0,v=n;j<=B;j++,v=v*b%p){
+        mp[v]=j;
+    }
+    ll b_B=1;for(int i=1;i<=B;i++)b_B=b_B*b%p;
+    for(ll j=1,v=b_B;j*B<=p;j++,v=v*b_B%p){
+        if(mp[v]){
+            cout<<j*B-mp[v]<<endl;
+            return 0;
+        }
+    }
+    cout<<"no solution";
+	return 0;
+}
+```

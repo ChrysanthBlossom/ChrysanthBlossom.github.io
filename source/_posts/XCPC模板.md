@@ -2725,3 +2725,129 @@ signed main(){
 	return 0;
 }
 ```
+
+## 七、多项式半家桶
+
+涉及基础多项式乘法、inv、ln 与 exp。
+
+```cpp
+#include<bits/stdc++.h> 
+#define ri register int
+#define ll long long
+#define mkp make_pair
+#define ld long double
+using namespace std;
+const int maxn=1e7+7;
+const int mod=998244353;
+ll qpow(ll a,ll b,ll p){
+	ll ans=1;
+	for(;b;b>>=1,a=a*a%p)if(b&1)ans=ans*a%p;
+	return ans;
+}
+namespace PolyTimes{
+	const int G=3;
+	const int invG=qpow(G,mod-2,mod);
+	int rev[maxn];
+	void calc_rev(int limit){
+		for(ri i=0;i<limit;i++)rev[i]=rev[i>>1]>>1|(i&1?limit>>1:0);
+	}
+	void NTT(ll *f,int limit,bool tp){
+		for(ri i=0;i<limit;i++)if(i<rev[i])swap(f[i],f[rev[i]]);
+		for(ri len=2;len<=limit;len<<=1){
+			int dwg=qpow((tp?G:invG),(mod-1)/len,mod);
+			int pa=len>>1;
+			for(ri i=0;i<limit;i+=len){
+				ll bf=1;
+				for(ri j=i;j<i+pa;j++){
+					ll t=bf*f[j+pa]%mod;
+					f[j+pa]=(f[j]-t+mod)%mod;
+					f[j]=(f[j]+t)%mod;
+					bf=bf*dwg%mod;
+				}
+			}
+		}
+		if(tp==0){
+			ll invn=qpow(limit,mod-2,mod);
+			for(ri i=0;i<limit;i++)f[i]=f[i]*invn%mod;
+		}
+	}
+	ll f[maxn],g[maxn];
+	void times(ll *A,ll *B,int limit){
+		fill(f,f+limit,0);fill(g,g+limit,0);
+		for(ri i=0;i<limit>>1;i++)f[i]=A[i];
+		for(ri i=0;i<limit>>1;i++)g[i]=B[i];
+		calc_rev(limit);
+		NTT(f,limit,1);NTT(g,limit,1);
+		for(ri i=0;i<limit;i++)f[i]=f[i]*g[i]%mod;
+		NTT(f,limit,0);
+		for(ri i=0;i<limit;i++)A[i]=f[i]; 
+	}
+}
+namespace INV{
+	ll g[2][maxn];
+	void get_inv(ll *f,int limit){
+		fill(g[0],g[0]+limit,0);
+		fill(g[1],g[1]+limit,0);
+		g[0][0]=qpow(f[0],mod-2,mod);
+		g[0][1]=0;
+		int o=1;for(ri len=2;len<=limit;len<<=1,o^=1){
+			fill(g[o],g[o]+(len<<1),0);
+			for(ri i=0;i<len;i++)g[o][i]=g[o^1][i];
+			PolyTimes::times(g[o],f,len<<1);
+			for(ri i=0;i<len;i++)g[o][i]=mod-g[o][i];
+			g[o][0]=(g[o][0]+2)%mod;
+			PolyTimes::times(g[o],g[o^1],len<<1);
+		}
+		for(ri i=0;i<limit;i++)f[i]=g[o^1][i];
+	}
+}
+namespace Ln{
+	void differential(ll *f,int limit){
+		for(ri i=0;i<limit-1;i++)f[i]=f[i+1]*(i+1)%mod;
+		f[limit-1]=0;
+	}
+	void integral(ll *f,int limit){
+		for(ri i=limit-1;i;i--)f[i]=f[i-1]*qpow(i,mod-2,mod)%mod;
+		f[0]=0;
+	}
+	ll g[maxn];
+	void get_ln(ll *f,int limit){
+		for(ri i=0;i<limit;i++)g[i]=f[i];
+		differential(g,limit);
+		INV::get_inv(f,limit);
+		PolyTimes::times(f,g,limit<<1);
+		integral(f,limit);
+	}
+}
+namespace Exp{
+	ll g[2][maxn];
+	void get_exp(ll *f,int limit){
+		fill(g[0],g[0]+limit,0);
+		fill(g[1],g[1]+limit,0);
+		g[0][0]=1;g[0][1]=0;
+		int cur=0;
+		for(ri len=2;len<=limit;len<<=1){
+			cur^=1;
+			fill(g[cur],g[cur]+(len<<1),0);
+			for(ri i=0;i<len;i++)g[cur][i]=g[cur^1][i];
+			Ln::get_ln(g[cur],len<<1);
+			for(ri i=0;i<len;i++)g[cur][i]=mod-g[cur][i];
+			g[cur][0]=(g[cur][0]+1)%mod;
+			for(ri i=0;i<len;i++)g[cur][i]=(g[cur][i]+f[i])%mod;
+			PolyTimes::times(g[cur],g[cur^1],len<<1);
+		}
+		for(ri i=0;i<limit;i++)f[i]=g[cur][i];
+	}
+}
+int n;
+ll f[maxn];
+signed main(){
+	ios::sync_with_stdio(0);
+	cin>>n;
+	for(ri i=0;i<n;i++)cin>>f[i];
+	int limit=1;while(limit<n)limit<<=1;
+	Exp::get_exp(f,limit);
+	for(ri i=0;i<n;i++)cout<<f[i]<<' ';cout<<endl;
+	return 0;
+}
+```

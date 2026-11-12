@@ -282,6 +282,7 @@ vector<Point>get_side(vector<Point>pnt){
 	return convex;
 }
 vector<Point>get_convex(vector<Point>pnt){
+    if(pnt.size()<=1)return pnt;
 	sort(pnt.begin(),pnt.end());
 	vector<Point>ans,convex;
 	convex=get_side(pnt);
@@ -295,7 +296,7 @@ ld get_diameter(vector<Point>pnt){
 	vector<Point>convex=get_convex(pnt);
 	int sz=convex.size();for(int i=0;i<sz;i++)convex.emplace_back(convex[i]);
 	int cur=1;
-	ld ans=get_dis(convex[0],convex[1])*get_dis(convex[0],convex[1]);
+	ld ans=0;
 	for(int i=0;i<sz;i++){
 		while(cur<convex.size()-1&&get_dis(convex[i],convex[i+1],convex[cur])<=get_dis(convex[i],convex[i+1],convex[cur+1]))cur++;
 		ans=max(ans,get_dis(convex[cur],convex[i]));
@@ -464,6 +465,7 @@ void update(set<Point>&st,Point p){
 	st.erase(next(lit),rit);
 	st.insert(p);
 }
+
 
 ```
 
@@ -2074,6 +2076,108 @@ signed main(){
 }
 ```
 
+### 李超线段树
+
+爆点没那么多。
+
+```cpp
+#include<bits/stdc++.h>
+#define ll long long
+#define mkp make_pair
+#define ull unsigned long long
+#define mkt make_tuple
+#define ld long double
+using namespace std;
+const int maxn=2e5+7;
+const ll inf=1e14;
+const int mod=998244353;
+const ld eps=1e-10;
+struct Line{
+    ld k,b;
+    ld operator () (ld x){
+        return (k*x+b);
+    }
+}ln[maxn];
+bool grt(int id1,int id2,int x){
+    if(fabs(ln[id1](x)-ln[id2](x))<eps)return id1<id2;
+    return ln[id1](x)>ln[id2](x);
+}
+int get_max(int id1,int id2,int x){
+    if(grt(id1,id2,x))return id1;
+    return id2;
+}
+namespace SegT{
+    struct node{
+        int ls,rs;
+        int lineid;
+    }tree[maxn<<2];
+    #define ls(o) (tree[o].ls)
+    #define rs(o) (tree[o].rs)
+    int root,tot;
+    int new_node(){
+        ++tot;
+        tree[tot].ls=tree[tot].rs=0;
+        tree[tot].lineid=0;
+        return tot;
+    }
+    void update(int &o,int l,int r,int ql,int qr,int id){
+        if(!o)o=new_node();
+        int mid=l+r>>1;
+        if(ql<=l&&r<=qr){
+            if(grt(id,tree[o].lineid,mid))swap(tree[o].lineid,id);
+            if(grt(id,tree[o].lineid,l))update(ls(o),l,mid,ql,qr,id);
+            if(grt(id,tree[o].lineid,r))update(rs(o),mid+1,r,ql,qr,id);
+            return;
+        }
+        if(ql<=mid)update(ls(o),l,mid,ql,qr,id);
+        if(qr>mid)update(rs(o),mid+1,r,ql,qr,id);
+    }
+    int query(int o,int l,int r,int p){
+        if(!o)return 0;
+        int ans=tree[o].lineid;
+        int mid=l+r>>1;
+        if(p<=mid)ans=get_max(ans,query(ls(o),l,mid,p),p);
+        else ans=get_max(ans,query(rs(o),mid+1,r,p),p);
+        return ans;
+    }
+}
+signed main(){
+    ios::sync_with_stdio(0);
+    ln[0]=(Line){0,-inf};
+    int n;cin>>n;
+    int tot=0;
+    int lans=0;
+    for(int i=1;i<=n;i++){
+        int op;cin>>op;
+        if(op==1){
+            int x0,y0,x1,y1;
+            cin>>x0>>y0>>x1>>y1;
+            x0=(x0+lans-1)%39989+1,y0=(y0+lans-1)%(int)(1e9)+1;
+            x1=(x1+lans-1)%39989+1,y1=(y1+lans-1)%(int)(1e9)+1;
+
+            if(x0==x1){
+                ++tot;
+                ln[tot]=(Line){0,max((ld)y1,(ld)y0)};
+                SegT::update(SegT::root,1,40000,x0,x0,tot);
+            }
+            else{
+                ++tot;
+                ld k=(ld)(1)*(y1-y0)/(x1-x0);
+                ld b=y1-k*x1;
+                ln[tot]=(Line){k,b};
+                SegT::update(SegT::root,1,40000,min(x0,x1),max(x0,x1),tot);
+            }
+        }
+        else{
+            int x;cin>>x;x=(x+lans-1)%39989+1;
+            lans=SegT::query(SegT::root,1,40000,x);
+            cout<<lans<<endl;
+        }
+    }
+	return 0;
+}
+```
+
 ## 四、字符串
 
 ### KMP
@@ -2726,7 +2830,9 @@ signed main(){
 }
 ```
 
-## 七、多项式半家桶
+## 七、杂项
+
+### 多项式
 
 涉及基础多项式乘法、inv、ln 与 exp。
 
@@ -2848,6 +2954,143 @@ signed main(){
 	int limit=1;while(limit<n)limit<<=1;
 	Exp::get_exp(f,limit);
 	for(ri i=0;i<n;i++)cout<<f[i]<<' ';cout<<endl;
+	return 0;
+}
+```
+
+### FMT/FWT
+
+```cpp
+void FMT_OR(ll *f,int limit,bool tp){
+	for(ri len=2;len<=limit;len<<=1){
+		int pa=len>>1;
+		for(ri i=0;i<limit;i+=len){
+			for(ri j=i;j<i+pa;j++){
+				f[j+pa]=(f[j+pa]+f[j]*(tp?1:mod-1)%mod)%mod;
+			}
+		}
+	}
+}
+void FMT_AND(ll *f,int limit,bool tp){
+	for(ri len=2;len<=limit;len<<=1){
+		int pa=len>>1;
+		for(ri i=0;i<limit;i+=len){
+			for(ri j=i;j<i+pa;j++){
+				f[j]=(f[j]+f[j+pa]*(tp?1:mod-1)%mod)%mod;
+			}
+		}
+	}
+}
+void FWT(ll *f,int limit,bool tp){
+	for(ri len=2;len<=limit;len<<=1){
+		int pa=len>>1;
+		for(ri i=0;i<limit;i+=len){
+			for(ri j=i;j<i+pa;j++){
+				ll t1=f[j],t2=f[j+pa];
+				f[j]=(t1+t2)*(tp?1:inv2)%mod;
+				f[j+pa]=(t1-t2+mod)%mod*(tp?1:inv2)%mod;
+			}
+		}
+	}
+}
+```
+
+### Pollard's Rho
+
+```cpp
+#include<bits/stdc++.h>
+#define ll __int128
+#define mkp make_pair
+#define mkt make_tuple
+#define ld long double
+#define lowbit(x) (x&-x)
+using namespace std;
+const int maxn=2e6+7;
+const int inf=1e9;
+mt19937 my_rand(324351);
+ll aabs(ll a){
+	if(a<0)return -a;
+	return a;
+}
+namespace PollardsRho{
+	int p[12]={2,3,5,7,11,13,17,19,23,29,31,37};
+	ll qpow(ll a,ll b,ll p){
+		ll ans=1;
+		for(;b;b>>=1,a=a*a%p)if(b&1)ans=ans*a%p;
+		return ans;
+	}
+	bool check(ll z,ll t,ll r,ll n){
+		ll st=qpow(z,r,n);
+		if(st==1)return 1;
+		for(int i=0;i<t;i++){
+			if(st==n-1)return 1;
+			st=st*st%n;
+		}
+		return 0;
+	}
+	bool miller_rabin(ll x){
+		if(x<=37){
+			for(int i=0;i<12;i++)if(x==p[i])return 1;
+			return 0;
+		}
+		if(x%2==0)return 0;
+		ll t=0,r=x-1;
+		while(r%2==0)r>>=1,t++;
+		for(int i=0;i<12;i++){
+			if(!check(p[i],t,r,x))return 0;
+		}
+		return 1;
+	}
+	ll gcd(ll a,ll b){
+		if(b==0)return a;
+		return gcd(b,a%b);
+	}
+	ll f(ll x,ll c,ll n){
+		return (x*x+c)%n;
+	}
+	ll pollard_rho(ll n){
+		if(n==4)return 2;
+		ll x0=1ll*my_rand()*my_rand()%n;
+		ll c=1ll*my_rand()*my_rand()%n;
+		ll a=f(x0,c,n);ll b=f(a,c,n);
+		for(int siz=1;a!=b;siz=min(siz<<1,128)){
+			ll mul=1;
+			for(int i=0;i<siz;i++){
+				mul=mul*aabs(a-b)%n;
+				if(!mul)break;
+				a=f(a,c,n);b=f(f(b,c,n),c,n);
+			}
+			ll g=gcd(mul,n);
+			if(g!=1)return g;
+		}
+		return n;
+	}
+	vector<ll>get_prime(ll n){
+		if(miller_rabin(n))return vector<ll>{n};
+		ll d=pollard_rho(n);
+		while(d==n)d=pollard_rho(n);
+		vector<ll>ans;
+		vector<ll>ans1=get_prime(d),ans2=get_prime(n/d);
+		for(auto x:ans1)ans.emplace_back(x);
+		for(auto x:ans2)ans.emplace_back(x);
+		return ans;
+	}
+}
+void solve(){
+	long long n;cin>>n;
+	vector<ll>ans=PollardsRho::get_prime(n);
+	if(ans.size()==1){
+		cout<<"Prime\n";
+	}
+	else {
+		sort(ans.begin(),ans.end());
+		cout<<(long long)ans.back()<<endl;
+	}
+}
+signed main(){
+	ios::sync_with_stdio(0);
+	int T;cin>>T;
+	while(T--)solve();
 	return 0;
 }
 ```
